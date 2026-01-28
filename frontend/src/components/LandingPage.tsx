@@ -1,5 +1,4 @@
 import { ArrowRight } from 'lucide-react';
-import logo from 'figma:asset/3554ecab8b87e1a4e26b58997b7d2614ae189b80.png';
 import { Footer } from './Footer';
 
 interface LandingPageProps {
@@ -19,7 +18,7 @@ export function LandingPage({ onEnter, darkMode, setDarkMode }: LandingPageProps
           <div className="flex items-center justify-between">
             {/* Logo - Better Aligned to Left */}
             <div className="flex items-center">
-              <img src={logo} alt="BRIDA Jatim" className="h-12 md:h-14 w-auto" />
+              <img src="/images/logo-brida-jatim.png" alt="BRIDA Jatim" className="h-12 md:h-14 w-auto" />
             </div>
             
             {/* Fun Dark Mode Toggle - Better Aligned to Right */}
@@ -77,7 +76,7 @@ export function LandingPage({ onEnter, darkMode, setDarkMode }: LandingPageProps
           {/* Logo */}
           <div className="flex justify-center mb-6 md:mb-8 animate-fade-in">
             <img 
-              src={logo} 
+              src="/images/logo-brida-jatim.png"
               alt="BRIDA Jatim" 
               className="h-40 md:h-56 w-auto drop-shadow-lg hover:scale-105 transition-transform duration-300" 
             />
@@ -95,8 +94,8 @@ export function LandingPage({ onEnter, darkMode, setDarkMode }: LandingPageProps
           <p className={`text-base md:text-lg lg:text-xl mb-6 md:mb-8 max-w-3xl mx-auto leading-relaxed ${
             darkMode ? 'text-gray-300' : 'text-[#64748B]'
           } animate-slide-up-delay`}>
-            Platform digital yang menyajikan informasi inovasi daerah melalui visualisasi yang informatif, 
-            terintegrasi, dan mutakhir untuk mendukung pengambilan keputusan berbasis data di Provinsi Jawa Timur.
+            Platform digital yang menyajikan informasi inovasi daerah melalui visualisasi data yang informatif, 
+            terintegrasi, dan terkini untuk mendukung pengambilan keputusan berbasis data di Provinsi Jawa Timur
           </p>
 
           {/* CTA Button */}
@@ -136,7 +135,7 @@ export function LandingPage({ onEnter, darkMode, setDarkMode }: LandingPageProps
             } shadow-lg`}>
               <div className="text-4xl md:text-5xl mb-4">🤖</div>
               <h3 className={`font-bold text-lg md:text-xl mb-3 ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                AI-Powered Insights
+                AI Insights
               </h3>
               <p className={`text-sm md:text-base leading-relaxed ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>
                 Memanfaatkan kecerdasan buatan untuk memberikan rekomendasi kolaborasi inovasi dan insight otomatis 

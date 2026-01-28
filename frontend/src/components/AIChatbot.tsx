@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, Bot, FileDown, Users, Target, Zap, Search, X, AlertCircle, RefreshCw, Sparkles, TrendingUp, CheckCircle, ArrowRight } from 'lucide-react';
 import { CollaborationDetail } from './CollaborationDetail';
-import { ReportAIRecommendation } from './ReportAIRecommendation';
+import { ReportSingleInnovation } from './ReportSingleInnovation';
 
 // Top AI-Generated Recommendations (System Generated)
 const topRecommendations = [
@@ -211,7 +211,7 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
   const [showExplorationResult, setShowExplorationResult] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'recommendations' | 'exploration' | 'chatbot'>('recommendations');
-  const [showReport, setShowReport] = useState(false);
+  const [selectedInnovationForPDF, setSelectedInnovationForPDF] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const explorationResultRef = useRef<HTMLDivElement>(null);
 
@@ -343,14 +343,6 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
             Sistem AI untuk mendukung analisis dan pengambilan keputusan strategis inovasi daerah
           </p>
         </div>
-        <button 
-          onClick={() => setShowReport(true)}
-          className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm md:text-base shadow-md"
-        >
-          <FileDown size={18} />
-          <span className="hidden md:inline">Download Report</span>
-          <span className="md:hidden">Download</span>
-        </button>
       </div>
 
       {/* Main Layout: Two Columns */}
@@ -462,7 +454,10 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
                       Lihat Detail
                       <ArrowRight size={16} />
                     </button>
-                    <button className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm font-medium">
+                    <button 
+                      onClick={() => setSelectedInnovationForPDF(item)}
+                      className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
+                    >
                       <FileDown size={16} />
                       PDF
                     </button>
@@ -595,6 +590,25 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
                       </p>
                     </div>
                   </div>
+
+                  {/* Export PDF Button */}
+                  <div className="mt-4">
+                    <button 
+                      onClick={() => setSelectedInnovationForPDF({
+                        ...selectedExploration,
+                        jenis: 'Hasil Eksplorasi',
+                        category: getScoreLabel(selectedExploration.score),
+                        summary: selectedExploration.manfaat,
+                        collaborators: [selectedExploration.opd1, selectedExploration.opd2],
+                        benefits: [selectedExploration.manfaat],
+                        challenges: [selectedExploration.alasan]
+                      })}
+                      className="w-full flex items-center justify-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
+                    >
+                      <FileDown size={16} />
+                      Export PDF Hasil Eksplorasi
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -704,7 +718,12 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
       </div>
       
       {/* Report Modal */}
-      {showReport && <ReportAIRecommendation onClose={() => setShowReport(false)} />}
+      {selectedInnovationForPDF && (
+        <ReportSingleInnovation 
+          onClose={() => setSelectedInnovationForPDF(null)} 
+          innovation={selectedInnovationForPDF}
+        />
+      )}
     </div>
   );
 }

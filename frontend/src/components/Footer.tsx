@@ -1,5 +1,4 @@
 import { MapPin, Phone, Mail, Instagram, Twitter, ExternalLink } from 'lucide-react';
-import logo from 'figma:asset/762c03ce75379b8f11d45d27d5eb18d10fa7e492.png';
 
 interface FooterProps {
   darkMode: boolean;
@@ -17,7 +16,7 @@ export function Footer({ darkMode, sidebarOpen }: FooterProps) {
             {/* Logo and Description - Vertical Layout, Center Aligned */}
             <div className="flex flex-col items-center text-center">
               <img 
-                src={logo} 
+                src="/images/logo-brida-jatim.png"
                 alt="BRIDA Jatim" 
                 className="h-16 md:h-20 w-auto mb-3" 
               />
@@ -46,8 +45,8 @@ export function Footer({ darkMode, sidebarOpen }: FooterProps) {
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail size={18} className="flex-shrink-0" />
-                  <a href="mailto:ses-diri@brin.go.id" className="text-sm text-blue-100 hover:text-white transition-colors">
-                    ses-diri@brin.go.id
+                  <a href="mailto:balitbangjatim@gmail.com" className="text-sm text-blue-100 hover:text-white transition-colors">
+                    balitbangjatim@gmail.com
                   </a>
                 </div>
               </div>

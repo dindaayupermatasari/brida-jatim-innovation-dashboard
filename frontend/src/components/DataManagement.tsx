@@ -300,7 +300,7 @@ export function DataManagement({ darkMode, isLoggedIn }: DataManagementProps) {
   };
 
   const handleLogin = () => {
-    if (loginForm.username === 'admin' && loginForm.password === 'brida2024') {
+    if (loginForm.username === 'admin' && loginForm.password === 'brida2026') {
       window.localStorage.setItem('isLoggedIn', 'true');
       setShowLoginModal(false);
       setLoginError('');

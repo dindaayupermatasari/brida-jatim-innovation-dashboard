@@ -6,8 +6,8 @@ import { MapInnovation } from './components/MapInnovation';
 import { AIChatbot } from './components/AIChatbot';
 import { DataManagement } from './components/DataManagement';
 import { LayoutDashboard, BarChart3, MapPin, Bot, Database, Menu, User, LogOut } from 'lucide-react';
-import logo from 'figma:asset/3554ecab8b87e1a4e26b58997b7d2614ae189b80.png';
 
+// BRIDA Jatim Dashboard Application
 export default function App() {
   const [activePage, setActivePage] = useState(() => {
     return localStorage.getItem('activePage') || 'landing';
@@ -44,6 +44,13 @@ export default function App() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [profileMenuOpen]);
+
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      localStorage.removeItem('activePage');
+      setActivePage('landing');
+    }
+  }, []);
 
   // Save active page to localStorage
   useEffect(() => {
@@ -90,7 +97,7 @@ export default function App() {
   };
 
   const handleLogin = () => {
-    if (loginForm.username === 'admin' && loginForm.password === 'admin123') {
+    if (loginForm.username === 'admin' && loginForm.password === 'brida2026') {
       setIsLoggedIn(true);
       setShowLoginForm(false);
       setProfileMenuOpen(false);
@@ -132,7 +139,7 @@ export default function App() {
                 <Menu size={20} />
               </button>
               <div className="flex items-center">
-                <img src={logo} alt="BRIDA Jatim" className="h-10 md:h-12 w-auto" />
+                <img src="/images/logo-brida-jatim.png" alt="BRIDA Jatim" className="h-10 md:h-12 w-auto" />
               </div>
             </div>
             
