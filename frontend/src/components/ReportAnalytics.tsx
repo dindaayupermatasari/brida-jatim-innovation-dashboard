@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import logo from 'figma:asset/3554ecab8b87e1a4e26b58997b7d2614ae189b80.png';
 
 // Data matching the actual Analytics component
 const urusanTahapanData = [
@@ -368,7 +367,7 @@ export function ReportAnalytics({ onClose }: ReportAnalyticsProps) {
                 borderBottom: '3px solid #2563EB', 
                 paddingBottom: '12px' 
               }}>
-                <img src={logo} alt="BRIDA Jatim" style={{ height: '45px' }} />
+                <img src="/images/logo-brida-jatim.png" alt="BRIDA Jatim" style={{ height: '45px' }} />
                 <div style={{ flex: 1, marginLeft: '20px' }}>
                   <h1 style={{ fontSize: '22px', fontWeight: 'bold', color: '#1f2937', margin: '0 0 4px 0' }}>
                     Laporan Analitik Inovasi BRIDA Jawa Timur
@@ -575,7 +574,7 @@ export function ReportAnalytics({ onClose }: ReportAnalyticsProps) {
                 borderBottom: '3px solid #2563EB', 
                 paddingBottom: '12px' 
               }}>
-                <img src={logo} alt="BRIDA Jatim" style={{ height: '45px' }} />
+                <img src="/images/logo-brida-jatim.png" alt="BRIDA Jatim" style={{ height: '45px' }} />
                 <div style={{ flex: 1, marginLeft: '20px' }}>
                   <h1 style={{ fontSize: '22px', fontWeight: 'bold', color: '#1f2937', margin: '0 0 4px 0' }}>
                     Laporan Analitik Inovasi BRIDA Jawa Timur

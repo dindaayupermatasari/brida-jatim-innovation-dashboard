@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import logo from 'figma:asset/3554ecab8b87e1a4e26b58997b7d2614ae189b80.png';
 
 const topRecommendations = [
   {
@@ -335,7 +334,7 @@ export function ReportAIRecommendation({ onClose }: ReportAIRecommendationProps)
           }}>
             {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: '48px', borderBottom: '4px solid #2563EB', paddingBottom: '24px' }}>
-              <img src={logo} alt="BRIDA Jatim" style={{ height: '80px', margin: '0 auto 24px', display: 'block' }} />
+              <img src="/images/logo-brida-jatim.png" alt="BRIDA Jatim" style={{ height: '80px', margin: '0 auto 24px', display: 'block' }} />
               <h1 style={{ fontSize: '36px', fontWeight: 'bold', color: '#1f2937', marginBottom: '12px', margin: 0 }}>
                 Laporan AI Rekomendasi Kolaborasi
               </h1>

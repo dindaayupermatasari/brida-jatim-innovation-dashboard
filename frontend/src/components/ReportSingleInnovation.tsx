@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import logo from 'figma:asset/3554ecab8b87e1a4e26b58997b7d2614ae189b80.png';
 
 interface ReportSingleInnovationProps {
   onClose: () => void;
@@ -301,7 +300,7 @@ export function ReportSingleInnovation({ onClose, innovation }: ReportSingleInno
           }}>
             {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: '28px', borderBottom: '3px solid #2563EB', paddingBottom: '16px' }}>
-              <img src={logo} alt="BRIDA Jatim" style={{ height: '60px', margin: '0 auto 16px', display: 'block' }} />
+              <img src="/images/logo-brida-jatim.png" alt="BRIDA Jatim" style={{ height: '60px', margin: '0 auto 16px', display: 'block' }} />
               <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px', margin: 0 }}>
                 Laporan Detail Inovasi
               </h1>
