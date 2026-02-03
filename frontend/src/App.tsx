@@ -83,7 +83,7 @@ export default function App() {
         return <LandingPage onEnter={() => setActivePage('home')} darkMode={darkMode} setDarkMode={setDarkMode} />;
       case 'home':
         return <Home darkMode={darkMode} />;
-      case 'analytics':
+      case 'analytics' :
         return <Analytics darkMode={darkMode} />;
       case 'map':
         return <MapInnovation darkMode={darkMode} />;

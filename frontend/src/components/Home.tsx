@@ -1,64 +1,219 @@
 import { useState, useEffect, useRef } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { TrendingUp, Users, MapPin, Award, Sparkles, Calendar, FileDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, Cell
+} from 'recharts';
+import {
+  TrendingUp, Award, Sparkles, Calendar,
+  FileDown, ChevronLeft, ChevronRight, Filter
+} from 'lucide-react';
 import { SkeletonLoader } from './SkeletonLoader';
 import { ReportDashboard } from './ReportDashboard';
 
-// Updated data - Tren Penerapan Per Tahun (2022-2025)
-const trendData = [
-  { tahun: '2022', digital: 45, nonDigital: 32, teknologi: 18 },
-  { tahun: '2023', digital: 68, nonDigital: 45, teknologi: 28 },
-  { tahun: '2024', digital: 95, nonDigital: 58, teknologi: 42 },
-  { tahun: '2025', digital: 112, nonDigital: 68, teknologi: 55 },
-];
-
-// Updated data - Jumlah Inovasi Berdasarkan Tahapan
-const maturityData = [
-  { level: 'Uji Coba', jumlah: 120 },
-  { level: 'Penerapan', jumlah: 145 },
-  { level: 'Inisiatif', jumlah: 85 },
-];
-
-const topOPD = [
-  { name: 'Dinas Komunikasi dan Informatika', jumlah: 45 },
-  { name: 'Dinas Kesehatan', jumlah: 38 },
-  { name: 'Dinas Pendidikan', jumlah: 32 },
-  { name: 'Bappeda', jumlah: 28 },
-  { name: 'Dinas Perhubungan', jumlah: 24 },
-];
-
-const topUrusan = [
-  { name: 'Kesehatan', jumlah: 78 },
-  { name: 'Pendidikan', jumlah: 65 },
-  { name: 'Komunikasi Dan Informatika', jumlah: 52 },
-  { name: 'Pekerjaan Umum Dan Penataan Ruang', jumlah: 45 },
-  { name: 'Administrasi Kependudukan Dan Pencatatan Sipil', jumlah: 38 },
-];
-
-const aiInsights = [
-  { icon: '📈', text: 'Pertumbuhan inovasi digital meningkat 23% tahun ini', type: 'success' },
-  { icon: '🏆', text: 'Dinas Kominfo memimpin dengan 45 inovasi berkategori matang', type: 'success' },
-  { icon: '⚠️', text: 'Perlu peningkatan kolaborasi antar daerah di wilayah Tapal Kuda', type: 'warning' },
-  { icon: '💡', text: 'Potensi integrasi sistem e-government dapat menghemat 30% biaya operasional', type: 'info' },
-  { icon: '🎯', text: 'Target 500 inovasi tahun depan sangat realistis berdasarkan tren saat ini', type: 'success' },
-];
+const API_URL = "http://localhost:8000";
 
 interface HomeProps {
   darkMode: boolean;
 }
 
+const YEARS = ['all', 2022, 2023, 2024, 2025] as const;
+
+const MONTHS = [
+  { num: 1, label: 'Jan' },
+  { num: 2, label: 'Feb' },
+  { num: 3, label: 'Mar' },
+  { num: 4, label: 'Apr' },
+  { num: 5, label: 'Mei' },
+  { num: 6, label: 'Jun' },
+  { num: 7, label: 'Jul' },
+  { num: 8, label: 'Agu' },
+  { num: 9, label: 'Sep' },
+  { num: 10, label: 'Okt' },
+  { num: 11, label: 'Nov' },
+  { num: 12, label: 'Des' },
+];
+
 export function Home({ darkMode }: HomeProps) {
+
+  // ================== STATE ==================
+  const [selectedYear, setSelectedYear] = useState<'all' | number>('all');
+  const [trendData, setTrendData] = useState<any[]>([]);
+  const [maturityData, setMaturityData] = useState<any[]>([]);
+  const [topOPD, setTopOPD] = useState<any[]>([]);
+  const [topUrusan, setTopUrusan] = useState<any[]>([]);
+  const [stats, setStats] = useState<any[]>([]);
+  const [aiInsights, setAiInsights] = useState<any[]>([]);
+  const [aiLoading, setAiLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  
+
   const [scrollPosition, setScrollPosition] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showReport, setShowReport] = useState(false);
 
+  // ================== FETCH API ==================
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        setLoading(true);
+
+        const [
+          maturityRes,
+          opdRes,
+          urusanRes,
+          statsRes
+        ] = await Promise.all([
+          fetch(`${API_URL}/dashboard/maturity`),
+          fetch(`${API_URL}/dashboard/top-opd`),
+          fetch(`${API_URL}/dashboard/top-urusan`),
+          fetch(`${API_URL}/dashboard/stats`)
+        ]);
+
+        const maturityRaw = await maturityRes.json();
+        const opdRaw = await opdRes.json();
+        const urusanRaw = await urusanRes.json();
+        const stat = await statsRes.json();
+
+        /* ================= NORMALIZE DATA ================= */
+
+        // Maturity Level
+        const maturity = maturityRaw.map((d: any) => ({
+          level: d.level,
+          jumlah: Number(d.jumlah),
+        }));
+
+        // Top OPD
+        const opd = opdRaw.map((d: any) => ({
+          name: d.name,
+          jumlah: Number(d.jumlah),
+        }));
+
+        // Top Urusan
+        const urusan = urusanRaw.map((d: any) => ({
+          name: d.name,
+          jumlah: Number(d.jumlah),
+        }));
+
+        setMaturityData(maturity);
+        setTopOPD(opd);
+        setTopUrusan(urusan);
+
+        setStats([
+          {
+            icon: TrendingUp,
+            title: 'Total Inovasi',
+            value: stat.total_inovasi,
+          },
+          {
+            icon: Award,
+            title: 'Rata-rata Kematangan',
+            value: stat.rata_kematangan,
+          },
+          {
+            icon: Sparkles,
+            title: 'Inovasi Digital',
+            value: stat.inovasi_digital,
+          },
+          {
+            icon: Calendar,
+            title: 'Inovasi Baru Tahun Ini',
+            value: stat.inovasi_tahun_ini,
+          }
+        ]);
+
+      } catch (err) {
+        console.error("Gagal load dashboard:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboard();
+  }, []);
+
+  // ================== FETCH TREND DATA ==================
+  useEffect(() => {
+    const fetchTrend = async () => {
+      try {
+        if (selectedYear === 'all') {
+          // Fetch data per tahun untuk semua tahun
+          const res = await fetch(`${API_URL}/dashboard/trend`);
+          const raw = await res.json();
+
+          const normalized = raw.map((d: any) => ({
+            tahun: Number(d.tahun),
+            digital: Number(d.digital),
+            nondigital: Number(d.nondigital ?? 0),
+            teknologi: Number(d.teknologi),
+          }));
+
+          setTrendData(normalized);
+        } else {
+          // Fetch data per bulan untuk tahun tertentu
+          const res = await fetch(
+            `${API_URL}/dashboard/trend?tahun=${selectedYear}`
+          );
+          const raw = await res.json();
+
+          const normalized = MONTHS.map(m => {
+            const found = raw.find(
+              (d: any) => Number(d.bulan) === m.num
+            );
+
+            return {
+              bulan: m.label,
+              digital: found ? Number(found.digital) : 0,
+              nondigital: found ? Number(found.nondigital ?? 0) : 0,
+              teknologi: found ? Number(found.teknologi) : 0,
+            };
+          });
+
+          setTrendData(normalized);
+        }
+      } catch (err) {
+        console.error('Gagal load trend:', err);
+        setTrendData([]);
+      }
+    };
+
+    fetchTrend();
+  }, [selectedYear]);
+
+  useEffect(() => {
+    const fetchAIInsight = async () => {
+      try {
+        setAiLoading(true);
+        const res = await fetch(`${API_URL}/dashboard/ai-insight`);
+        const data = await res.json();
+        setAiInsights(data);
+      } catch (err) {
+        console.error("Gagal load AI Insight:", err);
+        setAiInsights([
+          {
+            icon: "⚠️",
+            text: "AI Insight tidak dapat dimuat saat ini",
+            type: "warning",
+          },
+        ]);
+      } finally {
+        setAiLoading(false);
+      }
+    };
+
+    fetchAIInsight();
+  }, []);
+
+
+  // ================== SCROLL ==================
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
       const scrollAmount = 300;
-      const newPosition = direction === 'left' 
-        ? scrollPosition - scrollAmount 
-        : scrollPosition + scrollAmount;
-      
+      const newPosition =
+        direction === 'left'
+          ? scrollPosition - scrollAmount
+          : scrollPosition + scrollAmount;
+
       scrollContainerRef.current.scrollTo({
         left: newPosition,
         behavior: 'smooth'
@@ -67,51 +222,10 @@ export function Home({ darkMode }: HomeProps) {
     }
   };
 
-  // Calculate max values for dynamic line thickness
-  const getMaxForMonth = (data: typeof trendData) => {
-    return data.map(item => {
-      const values = [item.digital, item.nonDigital, item.teknologi];
-      const maxVal = Math.max(...values);
-      return {
-        ...item,
-        maxType: 
-          maxVal === item.digital ? 'digital' : 
-          maxVal === item.nonDigital ? 'nonDigital' : 
-          'teknologi'
-      };
-    });
-  };
-
-  const stats = [
-    {
-      icon: TrendingUp,
-      title: 'Total Inovasi',
-      value: '430',
-      bgColor: 'border-l-4 border-[#2563EB]',
-      iconColor: 'text-[#2563EB]'
-    },
-    {
-      icon: Award,
-      title: 'Rata-rata Kematangan',
-      value: '3.8',
-      bgColor: 'border-l-4 border-purple-500',
-      iconColor: 'text-purple-600'
-    },
-    {
-      icon: Sparkles,
-      title: 'Inovasi Digital',
-      value: '215',
-      bgColor: 'border-l-4 border-green-500',
-      iconColor: 'text-green-600'
-    },
-    {
-      icon: Calendar,
-      title: 'Inovasi Baru 2026',
-      value: '57',
-      bgColor: 'border-l-4 border-orange-500',
-      iconColor: 'text-orange-600'
-    }
-  ];
+  // ================== LOADING ==================
+  if (loading) {
+    return <SkeletonLoader />;
+  }
 
   return (
     <div className="space-y-4 md:space-y-6 max-w-full pb-6 overflow-x-hidden">
@@ -126,12 +240,12 @@ export function Home({ darkMode }: HomeProps) {
             return (
               <div
                 key={index}
-                className={`rounded-lg shadow-md p-3 md:p-4 transition-all hover:scale-105 cursor-pointer ${stat.bgColor} ${
-                  darkMode ? 'bg-opacity-20' : ''
+                className={`rounded-lg shadow-md p-3 md:p-4 transition-all hover:scale-105 cursor-pointer ${
+                  darkMode ? 'bg-gray-800' : 'bg-white'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <Icon className={stat.iconColor} size={20} />
+                  <Icon className="text-[#2563EB]" size={20} />
                 </div>
                 <p className={`text-xs md:text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'} mb-1`}>
                   {stat.title}
@@ -147,60 +261,138 @@ export function Home({ darkMode }: HomeProps) {
 
       {/* Charts Section */}
       <div>
-        <h2 className={`text-base md:text-lg font-bold mb-3 md:mb-4 ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-          Visualisasi Data
+        <h2 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+          Analisis Data Inovasi
         </h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-          {/* Trend Chart */}
+          {/* Trend Chart with Year Filter */}
           <div className={`rounded-lg shadow-md p-4 md:p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-            <h3 className={`text-base md:text-lg font-bold mb-1 ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-              Tren Penerapan Inovasi Per Tahun
-            </h3>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-3">
+              <h3 className={`text-base md:text-lg font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                {selectedYear === 'all' 
+                  ? 'Tren Penerapan Inovasi Per Tahun' 
+                  : `Tren Penerapan Inovasi Per Bulan (${selectedYear})`
+                }
+              </h3>
+              
+              {/* Year Filter */}
+              <div className="flex items-center gap-2">
+                <Filter size={16} className={darkMode ? 'text-gray-400' : 'text-gray-600'} />
+                <select
+                  value={selectedYear}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSelectedYear(value === 'all' ? 'all' : Number(value));
+                  }}
+                  className={`
+                    px-3 py-1.5 rounded-lg text-sm font-medium
+                    border transition-all cursor-pointer
+                    focus:outline-none focus:ring-2 focus:ring-blue-500
+                    ${darkMode 
+                      ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  {YEARS.map(year => (
+                    <option key={year} value={year}>
+                      {year === 'all' ? 'Semua Tahun' : `Tahun ${year}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="w-full h-[300px] md:h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendData} margin={{ top: 20, right: 30, left: 20, bottom: 30 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-                  <XAxis 
-                    dataKey="tahun" 
-                    stroke={darkMode ? '#9ca3af' : '#6b7280'} 
-                    style={{ fontSize: '12px' }}
-                    label={{ 
-                      value: 'Tahun', 
-                      position: 'insideBottom', 
-                      offset: -10, 
-                      fill: darkMode ? '#9ca3af' : '#6b7280'
-                    }}
-                  />
-                  <YAxis 
-                    stroke={darkMode ? '#9ca3af' : '#6b7280'} 
-                    style={{ fontSize: '12px' }}
-                    label={{ 
-                      value: 'Jumlah Inovasi', 
-                      angle: -90, 
-                      position: 'insideLeft', 
-                      fill: darkMode ? '#9ca3af' : '#6b7280',
-                      style: { textAnchor: 'middle' },
-                      offset: 10
-                    }}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-                      border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                      color: darkMode ? '#ffffff' : '#000000'
-                    }}
-                    labelFormatter={(value) => `Tahun ${value}`}
-                  />
-                  <Legend 
-                    verticalAlign="top" 
-                    height={36}
-                    wrapperStyle={{ fontSize: '12px', paddingBottom: '5px' }} 
-                  />
-                  <Line type="monotone" dataKey="digital" stroke="#2563EB" strokeWidth={4} name="Digital" />
-                  <Line type="monotone" dataKey="nonDigital" stroke="#10b981" strokeWidth={2} name="Non-Digital" />
-                  <Line type="monotone" dataKey="teknologi" stroke="#f59e0b" strokeWidth={2} name="Teknologi" />
-                </LineChart>
-              </ResponsiveContainer>
+              {trendData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendData} margin={{ top: 20, right: 30, left: 20, bottom: 30 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+                    <XAxis 
+                      dataKey={selectedYear === 'all' ? 'tahun' : 'bulan'}
+                      stroke={darkMode ? '#9ca3af' : '#6b7280'} 
+                      style={{ fontSize: '12px' }}
+                      interval={0}
+                      label={{ 
+                        value: selectedYear === 'all' ? 'Tahun' : 'Bulan', 
+                        position: 'insideBottom', 
+                        offset: -10, 
+                        fill: darkMode ? '#9ca3af' : '#6b7280'
+                      }}
+                    />
+                    <YAxis 
+                      stroke={darkMode ? '#9ca3af' : '#6b7280'} 
+                      style={{ fontSize: '12px' }}
+                      label={{ 
+                        value: 'Jumlah Inovasi', 
+                        angle: -90, 
+                        position: 'insideLeft', 
+                        fill: darkMode ? '#9ca3af' : '#6b7280',
+                        style: { textAnchor: 'middle' },
+                        offset: 10
+                      }}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+                        border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+                        color: darkMode ? '#ffffff' : '#000000',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                      labelFormatter={(value) => 
+                        selectedYear === 'all' 
+                          ? `Tahun ${value}` 
+                          : `${value} ${selectedYear}`
+                      }
+                    />
+                    <Legend 
+                      verticalAlign="top" 
+                      height={36}
+                      wrapperStyle={{ fontSize: '12px', paddingBottom: '10px' }} 
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="digital" 
+                      stroke="#2563EB" 
+                      strokeWidth={3} 
+                      name="Digital"
+                      dot={{ fill: '#2563EB', r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="nondigital" 
+                      stroke="#10b981" 
+                      strokeWidth={3} 
+                      name="Non-Digital"
+                      dot={{ fill: '#10b981', r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="teknologi" 
+                      stroke="#f59e0b" 
+                      strokeWidth={3} 
+                      name="Teknologi"
+                      dot={{ fill: '#f59e0b', r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className={`flex items-center justify-center h-full ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <div className="text-center">
+                    <p className="text-lg font-medium mb-2">Tidak ada data</p>
+                    <p className="text-sm">
+                      {selectedYear === 'all' 
+                        ? 'Data tidak tersedia' 
+                        : `Tidak ada data untuk tahun ${selectedYear}`
+                      }
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -265,7 +457,7 @@ export function Home({ darkMode }: HomeProps) {
             </h3>
             <div className="w-full h-[300px] md:h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topOPD} layout="vertical" margin={{ top: 5, right: 30, left: 5, bottom: 30 }} barCategoryGap="20%">
+                <BarChart data={topOPD} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 30 }} barCategoryGap="20%">
                   <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
                   <XAxis 
                     type="number" 
@@ -283,7 +475,7 @@ export function Home({ darkMode }: HomeProps) {
                     dataKey="name" 
                     type="category" 
                     stroke={darkMode ? '#9ca3af' : '#6b7280'} 
-                    width={200} 
+                    width={240} 
                     style={{ fontSize: '11px' }}
                     label={{ 
                       value: 'OPD', 
@@ -291,7 +483,7 @@ export function Home({ darkMode }: HomeProps) {
                       position: 'insideLeft', 
                       fill: darkMode ? '#9ca3af' : '#6b7280',
                       style: { textAnchor: 'middle' },
-                      dx: -5
+                      dx: -30
                     }}
                   />
                   <Tooltip 
@@ -301,12 +493,16 @@ export function Home({ darkMode }: HomeProps) {
                       color: darkMode ? '#ffffff' : '#000000'
                     }}
                   />
-                  <Bar dataKey="jumlah" radius={[0, 8, 8, 0]} fill={(entry) => {
-                    return entry.jumlah === 45 ? '#2563EB' : '#9CA3AF';
-                  }}>
-                    {topOPD.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.jumlah === 45 ? '#2563EB' : '#9CA3AF'} />
-                    ))}
+                  <Bar dataKey="jumlah" radius={[0, 8, 8, 0]}>
+                    {topOPD.map((entry, index) => {
+                      const maxValue = Math.max(...topOPD.map(d => d.jumlah));
+                      return (
+                        <Cell
+                          key={`cell-opd-${index}`}
+                          fill={entry.jumlah === maxValue ? '#2563EB' : '#9CA3AF'}
+                        />
+                      );
+                    })}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -356,12 +552,16 @@ export function Home({ darkMode }: HomeProps) {
                       color: darkMode ? '#ffffff' : '#000000'
                     }}
                   />
-                  <Bar dataKey="jumlah" radius={[0, 8, 8, 0]} fill={(entry) => {
-                    return entry.jumlah === 78 ? '#2563EB' : '#9CA3AF';
-                  }}>
-                    {topUrusan.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.jumlah === 78 ? '#2563EB' : '#9CA3AF'} />
-                    ))}
+                  <Bar dataKey="jumlah" radius={[0, 8, 8, 0]}>
+                    {topUrusan.map((entry, index) => {
+                      const maxValue = Math.max(...topUrusan.map(d => d.jumlah));
+                      return (
+                        <Cell
+                          key={`cell-urusan-${index}`}
+                          fill={entry.jumlah === maxValue ? '#2563EB' : '#9CA3AF'}
+                        />
+                      );
+                    })}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -373,7 +573,7 @@ export function Home({ darkMode }: HomeProps) {
       {/* AI Auto Insight */}
       <div className={`rounded-lg shadow-md p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+          <h3 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
             AI Auto Insight
           </h3>
           <div className="flex gap-2">
@@ -400,23 +600,30 @@ export function Home({ darkMode }: HomeProps) {
           className="flex gap-4 overflow-x-auto scrollbar-hide"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {aiInsights.map((insight, index) => (
-            <div
-              key={index}
-              className={`flex-shrink-0 w-80 p-4 rounded-lg border-l-4 ${
-                insight.type === 'success' ? 'border-green-500' :
-                insight.type === 'warning' ? 'border-yellow-500' :
-                'border-blue-500'
-              } ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}
-            >
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">{insight.icon}</span>
-                <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>
-                  {insight.text}
-                </p>
+          {aiLoading ? (
+            <div className="text-gray-400">Mengambil insight dari AI...</div>
+          ) : (
+            aiInsights.map((insight, index) => (
+              <div
+                key={index}
+                className={`flex-shrink-0 w-80 p-4 rounded-lg border-l-4 ${
+                  insight.type === 'success'
+                    ? 'border-green-500'
+                    : insight.type === 'warning'
+                    ? 'border-yellow-500'
+                    : 'border-blue-500'
+                } ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">{insight.icon}</span>
+                  <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>
+                    {insight.text}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
+
         </div>
       </div>
 
