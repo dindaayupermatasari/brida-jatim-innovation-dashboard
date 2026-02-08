@@ -61,7 +61,26 @@ async def get_ai_insight():
         """
     )
 
-    prompt = build_insight_prompt(stats, trend, top_opd)
+    tahap_dist = await database.fetch_all(
+        """
+        SELECT tahapan_inovasi, COUNT(*) AS jumlah
+        FROM data_inovasi
+        GROUP BY tahapan_inovasi
+        ORDER BY jumlah DESC;
+        """
+    )
+
+    top_urusan = await database.fetch_all(
+        """
+        SELECT urusan_utama, COUNT(*) AS jumlah
+        FROM data_inovasi
+        GROUP BY urusan_utama
+        ORDER BY jumlah DESC
+        LIMIT 5;
+        """
+    )
+
+    prompt = build_insight_prompt(stats, trend, top_opd, tahap_dist, top_urusan)
 
     try:
         ai_text = call_gemini(prompt, mode="insight")
@@ -94,6 +113,7 @@ async def get_ai_insight():
 # =========================
 @router.get("/ai-collaboration")
 async def ai_collaboration_insight(inovasi_1: int, inovasi_2: int):
+    # ✅ FIXED: Gunakan nama kolom yang benar dari database
     query = """
     SELECT
         s.similarity,
@@ -101,8 +121,8 @@ async def ai_collaboration_insight(inovasi_1: int, inovasi_2: int):
         b.judul_inovasi AS inovasi_2,
         a.admin_opd AS opd_1,
         b.admin_opd AS opd_2,
-        a.urusan,
-        a.tahap
+        a.urusan_utama AS urusan,
+        a.tahapan_inovasi AS tahap
     FROM similarity_result s
     JOIN data_inovasi a ON a.id = s.inovasi_id_1
     JOIN data_inovasi b ON b.id = s.inovasi_id_2

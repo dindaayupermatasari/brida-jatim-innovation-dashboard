@@ -1,25 +1,24 @@
 import { useEffect, useState } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import logo from '/images/logo-brida-jatim.png';
 
-interface ReportSingleInnovationProps {
+interface ReportCollaborationProps {
   onClose: () => void;
-  innovation: {
-    id: string;
-    title: string;
-    jenis: string;
-    score: number;
-    category: string;
-    summary: string;
-    description?: string;
-    collaborators?: string[];
-    benefits?: string[];
-    challenges?: string[];
-    recommendations?: string[];
+  data: {
+    inovasi_1: { judul: string; opd: string; admin?: string };
+    inovasi_2: { judul: string; opd: string; admin?: string };
+    skor_kecocokan: number;
+    kategori: string;
+    hasil_ai: {
+      manfaat: string[];
+      alasan: string[];
+      dampak: string[];
+    };
   };
 }
 
-export function ReportSingleInnovation({ onClose, innovation }: ReportSingleInnovationProps) {
+export default function ReportCollaboration({ onClose, data }: ReportCollaborationProps) {
   const [isGenerating, setIsGenerating] = useState(true);
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('Memuat komponen...');
@@ -30,7 +29,39 @@ export function ReportSingleInnovation({ onClose, innovation }: ReportSingleInno
     return { bg: '#f59e0b', text: '#ffffff' };
   };
 
-  const scoreColor = getScoreBadgeColor(innovation.score);
+  const scoreColor = getScoreBadgeColor(data.skor_kecocokan);
+  
+  const numberBox: React.CSSProperties = {
+    minWidth: '28px',
+    width: '28px',
+    height: '28px',
+    borderRadius: '6px',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
+  };
+
+  // Footer Component yang akan digunakan di kedua halaman
+  const Footer = () => (
+    <div style={{ 
+      paddingTop: '16px',
+      borderTop: '2px solid #e5e7eb',
+      textAlign: 'center',
+      pageBreakInside: 'avoid',
+      breakInside: 'avoid'
+    }}>
+      <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#1f2937', marginBottom: '6px', margin: 0 }}>
+        BADAN RISET DAN INOVASI DAERAH PROVINSI JAWA TIMUR
+      </p>
+      <p style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0 0', lineHeight: '1.6' }}>
+        Jl. Gayung Kebonsari No.56, Gayungan, Kec. Gayungan Surabaya, Jawa Timur 60235 <br />  
+        Email: balitbangjatim@gmail.com | Website: brida.jatimprov.go.id/
+      </p>
+    </div>
+  );
 
   useEffect(() => {
     const generatePDF = async () => {
@@ -44,105 +75,97 @@ export function ReportSingleInnovation({ onClose, innovation }: ReportSingleInno
         setProgress(40);
         setStatusMessage('Memverifikasi elemen visual...');
         
-        const reportContent = document.getElementById('report-single-innovation-content');
-        if (!reportContent) {
+        const page1Content = document.getElementById('pdf-page-1');
+        const page2Content = document.getElementById('pdf-page-2');
+        
+        if (!page1Content || !page2Content) {
           console.error('Report content not found');
           alert('Error: Konten laporan tidak ditemukan. Silakan coba lagi.');
           onClose();
           return;
         }
         
-        const rect = reportContent.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) {
-          console.error('Report content has invalid dimensions:', rect);
-          alert('Error: Konten laporan memiliki dimensi tidak valid. Silakan coba lagi.');
-          onClose();
-          return;
-        }
-        
         setProgress(60);
         setStatusMessage('Membuat screenshot halaman...');
-        
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        const styleElement = document.createElement('style');
-        styleElement.id = 'html2canvas-oklch-fix';
-        styleElement.textContent = `
-          #report-single-innovation-content,
-          #report-single-innovation-content * {
-            color: inherit !important;
-            background-color: inherit !important;
-            border-color: inherit !important;
-          }
-          #report-single-innovation-content {
-            color: #000000 !important;
-            background-color: #ffffff !important;
-          }
-        `;
-        document.head.appendChild(styleElement);
-        
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const canvas = await html2canvas(reportContent, {
-          scale: 2.5,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          logging: false,
-          windowWidth: reportContent.scrollWidth,
-          windowHeight: reportContent.scrollHeight,
-        });
-        
-        const tempStyle = document.getElementById('html2canvas-oklch-fix');
-        if (tempStyle) {
-          tempStyle.remove();
-        }
-        
-        setProgress(85);
-        setStatusMessage('Mengkonversi ke PDF...');
-        
-        const imgData = canvas.toDataURL('image/png', 1.0);
-        
-        const pdf = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4'
-        });
-        
+
+        await document.fonts.ready;
+        await new Promise(r => setTimeout(r, 300));
+
+        const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
-        const canvasAspect = canvas.height / canvas.width;
-        
-        const contentWidth = pdfWidth - 20;
-        const contentHeight = contentWidth * canvasAspect;
-        const pageHeight = pdfHeight - 20;
-        
-        const totalPages = Math.ceil(contentHeight / pageHeight);
-        
-        for (let page = 0; page < totalPages; page++) {
-          if (page > 0) {
-            pdf.addPage();
+        const margin = 15;
+
+        // Generate Page 1
+        const canvas1 = await html2canvas(page1Content, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          windowWidth: page1Content.scrollWidth,
+          windowHeight: page1Content.scrollHeight,
+          onclone: (clonedDoc) => {
+            const all = clonedDoc.querySelectorAll('*');
+            all.forEach((el) => {
+              const style = clonedDoc.defaultView?.getComputedStyle(el);
+              if (!style) return;
+              const props = ['color', 'backgroundColor', 'borderColor', 'boxShadow'];
+              props.forEach((prop) => {
+                const val = style.getPropertyValue(prop);
+                if (val.includes("oklch")) {
+                  (el as HTMLElement).style.setProperty(prop, "#000000");
+                }
+              });
+            });
           }
-          
-          const position = -page * pageHeight;
-          
-          pdf.addImage(
-            imgData,
-            'PNG',
-            10,
-            position + 10,
-            contentWidth,
-            contentHeight,
-            undefined,
-            'FAST'
-          );
-        }
+        });
+
+        const imgData1 = canvas1.toDataURL('image/png');
+        const imgWidth1 = pdfWidth - margin * 2;
+        const imgHeight1 = (canvas1.height * imgWidth1) / canvas1.width;
+        pdf.addImage(imgData1, 'PNG', margin, margin, imgWidth1, imgHeight1);
+
+        setProgress(80);
+        setStatusMessage('Membuat halaman kedua...');
+
+        // Generate Page 2
+        pdf.addPage();
         
+        const canvas2 = await html2canvas(page2Content, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          windowWidth: page2Content.scrollWidth,
+          windowHeight: page2Content.scrollHeight,
+          onclone: (clonedDoc) => {
+            const all = clonedDoc.querySelectorAll('*');
+            all.forEach((el) => {
+              const style = clonedDoc.defaultView?.getComputedStyle(el);
+              if (!style) return;
+              const props = ['color', 'backgroundColor', 'borderColor', 'boxShadow'];
+              props.forEach((prop) => {
+                const val = style.getPropertyValue(prop);
+                if (val.includes("oklch")) {
+                  (el as HTMLElement).style.setProperty(prop, "#000000");
+                }
+              });
+            });
+          }
+        });
+
+        const imgData2 = canvas2.toDataURL('image/png');
+        const imgWidth2 = pdfWidth - margin * 2;
+        const imgHeight2 = (canvas2.height * imgWidth2) / canvas2.width;
+        pdf.addImage(imgData2, 'PNG', margin, margin, imgWidth2, imgHeight2);
+
         setProgress(95);
         setStatusMessage('Menyimpan file...');
         
-        const sanitizedTitle = innovation.title.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 50);
-        const fileName = `BRIDA_Inovasi_${sanitizedTitle}_${new Date().toISOString().split('T')[0]}.pdf`;
+        const title1 = data.inovasi_1.judul.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 25);
+        const title2 = data.inovasi_2.judul.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 25);
+        const fileName = `BRIDA_Kolaborasi_${title1}_${title2}_${new Date().toISOString().split('T')[0]}.pdf`;
+
         pdf.save(fileName);
         
         setProgress(100);
@@ -168,7 +191,7 @@ export function ReportSingleInnovation({ onClose, innovation }: ReportSingleInno
     return () => {
       clearTimeout(timer);
     };
-  }, [onClose, innovation.title]);
+  }, [onClose, data]);
 
   return (
     <div style={{ 
@@ -228,8 +251,8 @@ export function ReportSingleInnovation({ onClose, innovation }: ReportSingleInno
             <p style={{ 
               fontSize: '14px', 
               color: '#6b7280', 
-              marginBottom: '24px',
-              textAlign: 'center'
+              textAlign: 'center',
+              marginBottom: '16px'
             }}>
               {statusMessage}
             </p>
@@ -239,7 +262,8 @@ export function ReportSingleInnovation({ onClose, innovation }: ReportSingleInno
               height: '8px',
               backgroundColor: '#E5E7EB',
               borderRadius: '4px',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              marginBottom: '8px'
             }}>
               <div style={{
                 width: `${progress}%`,
@@ -251,8 +275,7 @@ export function ReportSingleInnovation({ onClose, innovation }: ReportSingleInno
             </div>
             <p style={{ 
               fontSize: '12px', 
-              color: '#9ca3af', 
-              marginTop: '8px'
+              color: '#9ca3af'
             }}>
               {progress}%
             </p>
@@ -287,27 +310,35 @@ export function ReportSingleInnovation({ onClose, innovation }: ReportSingleInno
             </button>
           </div>
           
-          {/* Report Content */}
-          <div id="report-single-innovation-content" style={{ 
+          {/* PAGE 1 */}
+          <div id="pdf-page-1" style={{ 
             backgroundColor: '#ffffff', 
             padding: '28px',
-            minHeight: '500px',
-            display: 'block',
-            visibility: 'visible',
-            width: '210mm',
-            margin: '0 auto',
-            boxSizing: 'border-box'
+            minHeight: '1050px',
+            maxHeight: '1050px',
+            display: 'flex',
+            flexDirection: 'column',
+            maxWidth: '794px',
+            width: '100%',
+            margin: '0 auto 30px auto',
+            boxSizing: 'border-box',
+            border: '1px solid #e5e7eb'
           }}>
             {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '28px', borderBottom: '3px solid #2563EB', paddingBottom: '16px' }}>
-              <img src="/images/logo-brida-jatim.png" alt="BRIDA Jatim" style={{ height: '60px', margin: '0 auto 16px', display: 'block' }} />
-              <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px', margin: 0 }}>
-                Laporan Detail Inovasi
+            <div style={{ 
+              textAlign: 'center',
+              marginBottom: '24px',
+              borderBottom: '3px solid #2563EB',
+              paddingBottom: '16px'
+            }}>
+              <img src={logo} alt="BRIDA Jatim" style={{ height: '60px', margin: '0 auto 16px', display: 'block' }} />
+              <h1 style={{ fontSize: '26px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px', margin: 0 }}>
+                Laporan Analisis Potensi Kolaborasi Inovasi
               </h1>
-              <h2 style={{ fontSize: '20px', color: '#4b5563', marginBottom: '8px', margin: '8px 0' }}>
+              <h2 style={{ fontSize: '18px', color: '#4b5563', marginBottom: '8px', margin: '8px 0' }}>
                 BRIDA Jawa Timur
               </h2>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: '8px 0' }}>
+              <p style={{ fontSize: '13px', color: '#6b7280', margin: '8px 0' }}>
                 Tanggal Generate: {new Date().toLocaleDateString('id-ID', { 
                   day: 'numeric', 
                   month: 'long', 
@@ -317,145 +348,229 @@ export function ReportSingleInnovation({ onClose, innovation }: ReportSingleInno
             </div>
 
             {/* Innovation Title & Score */}
-            <div style={{ marginBottom: '24px', backgroundColor: '#f0f9ff', padding: '24px', borderRadius: '10px', border: '3px solid #2563EB', pageBreakInside: 'avoid' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', marginBottom: '10px', margin: '0 0 10px 0' }}>
-                    {innovation.title}
-                  </h3>
-                  <span style={{ 
-                    display: 'inline-block',
-                    padding: '6px 12px', 
-                    backgroundColor: '#e5e7eb', 
-                    color: '#1f2937', 
-                    borderRadius: '16px',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}>
-                    {innovation.jenis}
-                  </span>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ 
-                    backgroundColor: scoreColor.bg, 
-                    color: scoreColor.text, 
-                    padding: '12px 18px', 
-                    borderRadius: '10px',
-                    fontSize: '28px',
-                    fontWeight: 'bold',
-                    marginBottom: '6px'
-                  }}>
-                    {innovation.score}%
-                  </div>
-                  <div style={{ 
-                    fontSize: '12px', 
-                    fontWeight: 'bold',
-                    color: scoreColor.bg
-                  }}>
-                    {innovation.category}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Summary */}
-            <div style={{ marginBottom: '24px', pageBreakInside: 'avoid' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '12px', borderLeft: '4px solid #2563EB', paddingLeft: '10px' }}>
-                Ringkasan
+            <div style={{ 
+              backgroundColor: '#f0f9ff',
+              padding: '20px',
+              borderRadius: '10px',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+              border: '3px solid #2563EB',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '6px', margin: '0 0 6px 0', color: '#1f2937' }}>
+                {data.inovasi_1.judul}
               </h3>
-              <div style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
-                <p style={{ fontSize: '14px', color: '#374151', lineHeight: '1.7', margin: 0 }}>
-                  {innovation.summary}
-                </p>
+
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '14px', margin: '14px 0', color: '#1f2937' }}>
+                {data.inovasi_2.judul}
+              </h3>
+
+              {/* Skor */}
+              <div style={{
+                backgroundColor: scoreColor.bg,
+                color: scoreColor.text,
+                width: "90px",
+                height: "90px",
+                borderRadius: "12px",
+                fontSize: '22px',
+                fontWeight: "bold",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                lineHeight: "1.2",
+                margin: "0 auto"
+              }}>
+                <div>{data.skor_kecocokan}%</div>
+                <div style={{
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  marginTop: "3px"
+                }}>
+                  {data.kategori}
+                </div>
               </div>
             </div>
 
-            {/* Description */}
-            {innovation.description && (
-              <div style={{ marginBottom: '24px', pageBreakInside: 'avoid' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '12px', borderLeft: '4px solid #2563EB', paddingLeft: '10px' }}>
-                  Deskripsi Detail
-                </h3>
-                <div style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
-                  <p style={{ fontSize: '14px', color: '#374151', lineHeight: '1.7', margin: 0 }}>
-                    {innovation.description}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Collaborators */}
-            {innovation.collaborators && innovation.collaborators.length > 0 && (
-              <div style={{ marginBottom: '24px', pageBreakInside: 'avoid' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '12px', borderLeft: '4px solid #2563EB', paddingLeft: '10px' }}>
-                  Kolaborator Potensial
-                </h3>
-                <div style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
-                  <ul style={{ margin: 0, paddingLeft: '22px', fontSize: '14px', color: '#374151', lineHeight: '1.8' }}>
-                    {innovation.collaborators.map((collab, index) => (
-                      <li key={index} style={{ marginBottom: '8px' }}>{collab}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {/* Benefits */}
-            {innovation.benefits && innovation.benefits.length > 0 && (
-              <div style={{ marginBottom: '24px', pageBreakInside: 'avoid' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '12px', borderLeft: '4px solid #16A34A', paddingLeft: '10px' }}>
+            {/* Manfaat Kolaborasi */}
+            {data.hasil_ai.manfaat?.length > 0 && (
+              <div style={{ 
+                backgroundColor: '#f0fdf4',
+                borderLeft: '6px solid #16a34a',
+                padding: '16px',
+                borderRadius: '10px',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                marginBottom: '20px',
+                flex: 1
+              }}>
+                <h3 style={{
+                  color: "#166534",
+                  fontSize: "17px",
+                  fontWeight: "bold",
+                  marginBottom: "12px",
+                  margin: '0 0 12px 0'
+                }}>
                   Manfaat Kolaborasi
                 </h3>
-                <div style={{ padding: '20px', backgroundColor: '#f0fdf4', borderRadius: '10px', border: '2px solid #16A34A' }}>
-                  <ul style={{ margin: 0, paddingLeft: '22px', fontSize: '14px', color: '#374151', lineHeight: '1.8' }}>
-                    {innovation.benefits.map((benefit, index) => (
-                      <li key={index} style={{ marginBottom: '8px' }}>{benefit}</li>
-                    ))}
-                  </ul>
-                </div>
+                {data.hasil_ai.manfaat.map((item, i) => (
+                  <div key={i} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                    background: '#ffffff',
+                    border: '2px solid #bbf7d0',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    marginBottom: '8px'
+                  }}>
+                    <div style={{ 
+                      ...numberBox, 
+                      background: '#22c55e', 
+                      color: '#fff',
+                      marginTop: '2px'
+                    }}>
+                      {i + 1}
+                    </div>
+                    <div style={{ 
+                      fontSize: '13px', 
+                      lineHeight: '1.8', 
+                      color: '#1f2937', 
+                      flex: 1,
+                      paddingTop: '2px'
+                    }}>
+                      {item}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Challenges */}
-            {innovation.challenges && innovation.challenges.length > 0 && (
-              <div style={{ marginBottom: '24px', pageBreakInside: 'avoid' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '12px', borderLeft: '4px solid #f59e0b', paddingLeft: '10px' }}>
-                  Tantangan & Pertimbangan
+            {/* Footer di Page 1 */}
+            <div style={{ marginTop: 'auto' }}>
+              <Footer />
+            </div>
+          </div>
+
+          {/* PAGE 2 */}
+          <div id="pdf-page-2" style={{ 
+            backgroundColor: '#ffffff', 
+            padding: '28px',
+            minHeight: '1050px',
+            maxHeight: '1050px',
+            display: 'flex',
+            flexDirection: 'column',
+            maxWidth: '794px',
+            width: '100%',
+            margin: '0 auto',
+            boxSizing: 'border-box',
+            border: '1px solid #e5e7eb'
+          }}>
+            {/* Alasan Kecocokan */}
+            {data.hasil_ai.alasan?.length > 0 && (
+              <div style={{ 
+                backgroundColor: '#eff6ff',
+                borderLeft: '6px solid #2563eb',
+                padding: '16px',
+                borderRadius: '10px',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ 
+                  color: '#1e3a8a', 
+                  fontSize: '17px', 
+                  fontWeight: 'bold', 
+                  marginBottom: '12px',
+                  margin: '0 0 12px 0'
+                }}>
+                  Alasan Kecocokan
                 </h3>
-                <div style={{ padding: '20px', backgroundColor: '#fffbeb', borderRadius: '10px', border: '2px solid #f59e0b' }}>
-                  <ul style={{ margin: 0, paddingLeft: '22px', fontSize: '14px', color: '#374151', lineHeight: '1.8' }}>
-                    {innovation.challenges.map((challenge, index) => (
-                      <li key={index} style={{ marginBottom: '8px' }}>{challenge}</li>
-                    ))}
-                  </ul>
-                </div>
+                {data.hasil_ai.alasan.map((item, i) => (
+                  <div key={i} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                    background: '#ffffff',            
+                    border: '2px solid #bfdbfe',       
+                    borderRadius: '8px',
+                    padding: '10px',
+                    marginBottom: '8px'
+                  }}>
+                    <div style={{ 
+                      ...numberBox, 
+                      background: '#3b82f6', 
+                      color: '#fff',
+                      marginTop: '2px'
+                    }}>
+                      {i + 1}
+                    </div>
+                    <div style={{ 
+                      fontSize: '13px', 
+                      lineHeight: '1.8', 
+                      color:'#1f2937', 
+                      flex: 1,
+                      paddingTop: '2px'
+                    }}>
+                      {item}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Recommendations */}
-            {innovation.recommendations && innovation.recommendations.length > 0 && (
-              <div style={{ marginBottom: '24px', pageBreakInside: 'avoid' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '12px', borderLeft: '4px solid #a855f7', paddingLeft: '10px' }}>
-                  Rekomendasi Tindak Lanjut
+            {/* Dampak Potensial */}
+            {data.hasil_ai.dampak?.length > 0 && (
+              <div style={{ 
+                backgroundColor: '#faf5ff',
+                borderLeft: '6px solid #9333ea',
+                padding: '16px',
+                borderRadius: '10px',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ 
+                  color: '#6b21a8', 
+                  fontSize: '17px', 
+                  fontWeight: 'bold', 
+                  marginBottom: '12px',
+                  margin: '0 0 12px 0'
+                }}>
+                  Dampak Potensial
                 </h3>
-                <div style={{ padding: '20px', backgroundColor: '#faf5ff', borderRadius: '10px', border: '2px solid #a855f7' }}>
-                  <ul style={{ margin: 0, paddingLeft: '22px', fontSize: '14px', color: '#374151', lineHeight: '1.8' }}>
-                    {innovation.recommendations.map((rec, index) => (
-                      <li key={index} style={{ marginBottom: '8px' }}>{rec}</li>
-                    ))}
-                  </ul>
-                </div>
+                {data.hasil_ai.dampak.map((item, i) => (
+                  <div key={i} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                    background: '#ffffff',             
+                    border: '2px solid #e9d5ff',       
+                    borderRadius: '8px',
+                    padding: '10px',
+                    marginBottom: '8px'
+                  }}>
+                    <div style={{ 
+                      ...numberBox, 
+                      background: '#9333ea', 
+                      color: '#fff',
+                      marginTop: '2px'
+                    }}>
+                      {i + 1}
+                    </div>
+                    <div style={{ 
+                      fontSize: '13px', 
+                      lineHeight: '1.8', 
+                      color:'#1f2937', 
+                      flex: 1,
+                      paddingTop: '2px'
+                    }}>
+                      {item}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Footer */}
-            <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '2px solid #e5e7eb', textAlign: 'center' }}>
-              <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#1f2937', marginBottom: '6px', margin: 0 }}>
-                BADAN RISET DAN INOVASI DAERAH PROVINSI JAWA TIMUR
-              </p>
-              <p style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0 0', lineHeight: '1.6' }}>
-                Jl. Ahmad Yani No. 152, Surabaya | Email: brida@jatimprov.go.id | Website: brida.jatimprov.go.id
-              </p>
+            {/* Footer di Page 2 */}
+            <div style={{ marginTop: 'auto' }}>
+              <Footer />
             </div>
           </div>
         </div>

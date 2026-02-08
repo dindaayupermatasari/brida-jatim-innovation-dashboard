@@ -1,162 +1,103 @@
-import { ArrowLeft, CheckCircle, Users, Target, Zap, TrendingUp, AlertTriangle, Calendar, FileText, Lightbulb, BarChart, Shield, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, CheckCircle, Users, Target, Zap, TrendingUp, AlertTriangle, FileText, Lightbulb, Loader2, AlertCircle } from 'lucide-react';
 
 interface CollaborationDetailProps {
   darkMode: boolean;
-  collaboration: {
-    id: number;
-    title: string;
-    jenis: string;
-    opd1: string;
-    opd2: string;
-    score: number;
-    category: string;
-    summary: string;
-    tags: string[];
-    manfaat: string;
-    dampak: string;
-    readiness: string;
-  };
+  inovasi_1_id: number;
+  inovasi_2_id: number;
+  inovasi_1_judul: string;
+  inovasi_2_judul: string;
+  opd_1: string;
+  opd_2: string;
+  urusan_1: string;
+  urusan_2: string;
+  tahap_1: string;
+  tahap_2: string;
+  kematangan_1: string;
+  kematangan_2: string;
+  similarity: number;
   onBack: () => void;
 }
 
+interface AICollaborationResponse {
+  judul_kolaborasi: string;
+  opd_terlibat: string[];
+  skor_kecocokan: number;
+  alasan_kesesuaian: string;
+  manfaat: string[];
+  potensi_dampak: string[];
+  tingkat_rekomendasi: string;
+}
+
 const getScoreBadgeColor = (score: number) => {
-  if (score >= 90) return 'bg-emerald-500 text-white';
-  if (score >= 70) return 'bg-blue-500 text-white';
+  if (score >= 0.9) return 'bg-emerald-500 text-white';
+  if (score >= 0.7) return 'bg-blue-500 text-white';
   return 'bg-yellow-500 text-white';
 };
 
-export function CollaborationDetail({ darkMode, collaboration, onBack }: CollaborationDetailProps) {
-  // Generate detailed data based on collaboration
-  const generateDetailedData = () => {
-    return {
-      tujuan: `Mengintegrasikan ${collaboration.opd1} dan ${collaboration.opd2} untuk menciptakan sinergi yang efektif dalam meningkatkan kualitas pelayanan publik di Provinsi Jawa Timur.`,
-      
-      alasanKesesuaian: `Kedua OPD memiliki data dan sistem yang saling melengkapi. ${collaboration.opd1} memiliki basis data yang dapat diintegrasikan dengan sistem dari ${collaboration.opd2}, menciptakan efisiensi operasional yang signifikan.`,
-      
-      sasaranPengguna: [
-        'Masyarakat umum Provinsi Jawa Timur',
-        'Petugas OPD terkait',
-        'Pemerintah daerah kabupaten/kota',
-        'Stakeholder eksternal (swasta, akademisi)',
-      ],
-      
-      langkahImplementasi: [
-        {
-          fase: 'Fase 1: Persiapan',
-          durasi: '1-2 bulan',
-          kegiatan: [
-            'Pembentukan tim koordinasi lintas OPD',
-            'Analisis kebutuhan teknis dan infrastruktur',
-            'Penyusunan roadmap kolaborasi',
-            'Koordinasi dengan pihak terkait',
-          ],
-        },
-        {
-          fase: 'Fase 2: Pengembangan',
-          durasi: '3-4 bulan',
-          kegiatan: [
-            'Pengembangan API dan integrasi sistem',
-            'Pengujian sistem secara bertahap',
-            'Pelatihan SDM pengelola',
-            'Penyusunan SOP operasional',
-          ],
-        },
-        {
-          fase: 'Fase 3: Implementasi',
-          durasi: '2-3 bulan',
-          kegiatan: [
-            'Pilot project di wilayah terpilih',
-            'Evaluasi dan perbaikan sistem',
-            'Roll-out ke seluruh wilayah',
-            'Monitoring dan evaluasi berkelanjutan',
-          ],
-        },
-      ],
-      
-      estimasiBiaya: {
-        infrastruktur: collaboration.score >= 90 ? 'Rp 250 - 350 juta' : 'Rp 400 - 600 juta',
-        sdm: 'Rp 150 - 200 juta',
-        operasional: 'Rp 100 - 150 juta/tahun',
-        total: collaboration.score >= 90 ? 'Rp 500 - 700 juta' : 'Rp 650 - 950 juta',
-      },
-      
-      risikoTantangan: [
-        {
-          risiko: 'Resistensi perubahan dari pegawai',
-          mitigasi: 'Sosialisasi intensif dan pelatihan berkelanjutan',
-          level: 'Sedang',
-        },
-        {
-          risiko: 'Keterbatasan infrastruktur TI',
-          mitigasi: 'Peningkatan kapasitas server dan bandwidth',
-          level: collaboration.score >= 90 ? 'Rendah' : 'Sedang',
-        },
-        {
-          risiko: 'Koordinasi antar OPD yang kompleks',
-          mitigasi: 'Pembentukan tim koordinasi khusus dengan SOP jelas',
-          level: 'Sedang',
-        },
-        {
-          risiko: 'Keamanan dan privasi data',
-          mitigasi: 'Implementasi sistem keamanan berlapis dan enkripsi data',
-          level: 'Tinggi',
-        },
-      ],
-      
-      indikatorKeberhasilan: [
-        {
-          indikator: 'Peningkatan efisiensi waktu pelayanan',
-          target: collaboration.score >= 90 ? '40-50%' : '30-40%',
-          periode: '6 bulan',
-        },
-        {
-          indikator: 'Tingkat kepuasan pengguna',
-          target: 'Minimal 85%',
-          periode: '1 tahun',
-        },
-        {
-          indikator: 'Akurasi data terintegrasi',
-          target: 'Minimal 95%',
-          periode: '6 bulan',
-        },
-        {
-          indikator: 'Adopsi sistem oleh OPD lain',
-          target: 'Minimal 3 OPD',
-          periode: '1 tahun',
-        },
-      ],
-      
-      dampakJangkaPanjang: [
-        'Peningkatan kualitas pelayanan publik secara berkelanjutan',
-        'Efisiensi anggaran operasional hingga 25-35%',
-        'Peningkatan transparansi dan akuntabilitas pemerintah',
-        'Model kolaborasi yang dapat direplikasi ke daerah lain',
-        'Percepatan transformasi digital pemerintahan',
-      ],
-      
-      rekomendasiLanjutan: [
-        'Perluasan integrasi ke OPD lain yang relevan',
-        'Pengembangan fitur analytics dan dashboard monitoring',
-        'Implementasi AI untuk prediksi dan optimalisasi layanan',
-        'Kolaborasi dengan pemerintah pusat untuk skalabilitas nasional',
-      ],
-    };
-  };
+const getTingkatRekomendasiColor = (tingkat: string, darkMode: boolean) => {
+  if (tingkat.includes('Replikasi')) {
+    return darkMode ? 'text-emerald-400 bg-emerald-900/30' : 'text-emerald-600 bg-emerald-50';
+  } else if (tingkat.includes('Kolaborasi')) {
+    return darkMode ? 'text-blue-400 bg-blue-900/30' : 'text-blue-600 bg-blue-50';
+  }
+  return darkMode ? 'text-purple-400 bg-purple-900/30' : 'text-purple-600 bg-purple-50';
+};
 
-  const detailData = generateDetailedData();
+export function CollaborationDetail({ 
+  darkMode, 
+  inovasi_1_id,
+  inovasi_2_id,
+  inovasi_1_judul,
+  inovasi_2_judul,
+  opd_1,
+  opd_2,
+  urusan_1,
+  urusan_2,
+  tahap_1,
+  tahap_2,
+  kematangan_1,
+  kematangan_2,
+  similarity,
+  onBack 
+}: CollaborationDetailProps) {
+  const [aiData, setAiData] = useState<AICollaborationResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const getRiskColor = (level: string) => {
-    switch (level) {
-      case 'Tinggi':
-        return darkMode ? 'text-red-400 bg-red-900/30' : 'text-red-600 bg-red-50';
-      case 'Sedang':
-        return darkMode ? 'text-yellow-400 bg-yellow-900/30' : 'text-yellow-600 bg-yellow-50';
-      case 'Rendah':
-        return darkMode ? 'text-green-400 bg-green-900/30' : 'text-green-600 bg-green-50';
-      default:
-        return darkMode ? 'text-gray-400 bg-gray-900/30' : 'text-gray-600 bg-gray-50';
+  useEffect(() => {
+    fetchAICollaboration();
+  }, [inovasi_1_id, inovasi_2_id]);
+
+  const fetchAICollaboration = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(
+        `http://localhost:8000/dashboard/ai-collaboration?inovasi_1=${inovasi_1_id}&inovasi_2=${inovasi_2_id}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data AI');
+      }
+      
+      const data = await response.json();
+      
+      if (data.status === 'error' || data.status === 'empty') {
+        throw new Error(data.message || 'Data tidak ditemukan');
+      }
+      
+      setAiData(data);
+    } catch (err) {
+      console.error('Error fetching AI collaboration:', err);
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+    } finally {
+      setLoading(false);
     }
   };
+
+  const scorePercentage = Math.round(similarity * 100);
 
   return (
     <div className="space-y-6 pb-6 max-w-full">
@@ -179,316 +120,244 @@ export function CollaborationDetail({ darkMode, collaboration, onBack }: Collabo
         </div>
       </div>
 
-      {/* Main Card */}
-      <div className={`rounded-2xl shadow-xl overflow-hidden ${
-        darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
-      }`}>
-        {/* Title Section */}
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 md:p-8">
-          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
-            <div className="flex-1">
-              <h3 className="text-2xl md:text-3xl font-bold mb-3">{collaboration.title}</h3>
-              <div className="flex flex-wrap gap-2 mb-4">
-                <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium">
-                  {collaboration.jenis}
-                </span>
-                {collaboration.tags.map((tag, index) => (
-                  <span key={index} className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm">
-                    {tag}
-                  </span>
-                ))}
+      {/* Loading State */}
+      {loading && (
+        <div className={`rounded-2xl shadow-xl p-12 text-center ${
+          darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+        }`}>
+          <Loader2 className={`mx-auto mb-4 animate-spin ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} size={48} />
+          <p className={`text-lg font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            Menganalisis kolaborasi dengan AI...
+          </p>
+          <p className={`text-sm mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            Mohon tunggu sebentar
+          </p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className={`rounded-2xl shadow-xl p-8 ${
+          darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+        }`}>
+          <div className="text-center">
+            <AlertCircle className="mx-auto mb-4 text-red-500" size={48} />
+            <h3 className={`text-xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              Gagal Memuat Data
+            </h3>
+            <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              {error}
+            </p>
+            <button
+              onClick={fetchAICollaboration}
+              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Coba Lagi
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      {!loading && !error && aiData && (
+        <div className={`rounded-2xl shadow-xl overflow-hidden ${
+          darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+        }`}>
+          {/* Title Section */}
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 md:p-8">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <Lightbulb size={24} />
+                  <span className="text-sm font-medium opacity-90">Rekomendasi Kolaborasi</span>
+                </div>
+                <h3 className="text-2xl md:text-3xl font-bold mb-3">
+                  {aiData.judul_kolaborasi}
+                </h3>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {aiData.opd_terlibat.map((opd, index) => (
+                    <span key={index} className="px-3 py-1 bg-white/20 rounded-full text-sm backdrop-blur-sm">
+                      {opd}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <p className="text-blue-50 text-base md:text-lg leading-relaxed">
-                {collaboration.summary}
-              </p>
-            </div>
-            
-            {/* Score Badge */}
-            <div className="flex flex-col items-center bg-white/10 backdrop-blur-sm rounded-xl p-6 lg:min-w-[180px]">
-              <div className={`text-5xl font-bold mb-2 ${getScoreBadgeColor(collaboration.score)}`}>
-                {collaboration.score}%
-              </div>
-              <div className="text-sm font-semibold mb-1">{collaboration.category}</div>
-              <div className="flex items-center gap-1 text-sm">
-                <CheckCircle size={14} />
-                {collaboration.readiness}
+              <div className="flex flex-col items-end gap-2">
+                <div className={`px-4 py-2 rounded-xl font-bold text-2xl ${getScoreBadgeColor(similarity)}`}>
+                  {scorePercentage}%
+                </div>
+                <span className="text-xs opacity-90">Skor Kecocokan</span>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Content Sections */}
-        <div className="p-6 md:p-8 space-y-8">
-          {/* OPD Partner */}
-          <section>
-            <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              <Users className="text-blue-500" size={24} />
-              OPD Yang Berkolaborasi
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-750' : 'bg-gray-50'}`}>
-                <p className={`text-sm mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>OPD Utama</p>
-                <p className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{collaboration.opd1}</p>
-              </div>
-              <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-750' : 'bg-gray-50'}`}>
-                <p className={`text-sm mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Partner Kolaborasi</p>
-                <p className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{collaboration.opd2}</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Tujuan Kolaborasi */}
-          <section>
-            <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              <Target className="text-purple-500" size={24} />
-              Tujuan Kolaborasi
-            </h4>
-            <p className={`text-base leading-relaxed p-4 rounded-lg ${
-              darkMode ? 'text-gray-300 bg-gray-750' : 'text-gray-700 bg-gray-50'
-            }`}>
-              {detailData.tujuan}
-            </p>
-          </section>
-
-          {/* Manfaat dan Dampak */}
-          <section>
-            <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              <Zap className="text-yellow-500" size={24} />
-              Manfaat & Dampak
-            </h4>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className={`p-4 rounded-lg border-l-4 border-green-500 ${
-                darkMode ? 'bg-gray-750' : 'bg-green-50'
-              }`}>
-                <p className={`text-sm font-semibold mb-2 ${darkMode ? 'text-green-400' : 'text-green-700'}`}>
-                  Manfaat Utama
-                </p>
-                <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {collaboration.manfaat}
-                </p>
-              </div>
-              <div className={`p-4 rounded-lg border-l-4 border-blue-500 ${
-                darkMode ? 'bg-gray-750' : 'bg-blue-50'
-              }`}>
-                <p className={`text-sm font-semibold mb-2 ${darkMode ? 'text-blue-400' : 'text-blue-700'}`}>
-                  Potensi Dampak
-                </p>
-                <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {collaboration.dampak}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Alasan Kesesuaian */}
-          <section>
-            <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              <Lightbulb className="text-orange-500" size={24} />
-              Alasan Kesesuaian & Sinergi
-            </h4>
-            <p className={`text-base leading-relaxed p-4 rounded-lg ${
-              darkMode ? 'text-gray-300 bg-gray-750' : 'text-gray-700 bg-gray-50'
-            }`}>
-              {detailData.alasanKesesuaian}
-            </p>
-          </section>
-
-          {/* Sasaran Pengguna */}
-          <section>
-            <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              <Users className="text-indigo-500" size={24} />
-              Sasaran Pengguna
-            </h4>
-            <ul className="space-y-2">
-              {detailData.sasaranPengguna.map((user, index) => (
-                <li key={index} className={`flex items-center gap-3 p-3 rounded-lg ${
-                  darkMode ? 'bg-gray-750' : 'bg-gray-50'
-                }`}>
-                  <CheckCircle size={18} className="text-indigo-500 flex-shrink-0" />
-                  <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{user}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {/* Langkah Implementasi */}
-          <section>
-            <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              <TrendingUp className="text-green-500" size={24} />
-              Langkah Implementasi
-            </h4>
-            <div className="space-y-4">
-              {detailData.langkahImplementasi.map((fase, index) => (
-                <div key={index} className={`p-4 rounded-lg ${
-                  darkMode ? 'bg-gray-750 border border-gray-700' : 'bg-gray-50 border border-gray-200'
-                }`}>
-                  <div className="flex flex-col md:flex-row md:items-center justify-between mb-3">
-                    <h5 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                      {fase.fase}
-                    </h5>
-                    <div className={`flex items-center gap-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      <Clock size={16} />
-                      <span>{fase.durasi}</span>
-                    </div>
-                  </div>
-                  <ul className="space-y-2">
-                    {fase.kegiatan.map((kegiatan, kIndex) => (
-                      <li key={kIndex} className="flex items-start gap-2">
-                        <span className={`text-sm font-semibold mt-0.5 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-                          {kIndex + 1}.
-                        </span>
-                        <span className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                          {kegiatan}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+          {/* Content Section */}
+          <div className="p-6 md:p-8 space-y-6">
+            {/* Tingkat Rekomendasi */}
+            <section>
+              <div className={`p-4 rounded-lg border-l-4 ${
+                aiData.tingkat_rekomendasi.includes('Replikasi') 
+                  ? 'border-emerald-500' 
+                  : aiData.tingkat_rekomendasi.includes('Kolaborasi')
+                    ? 'border-blue-500'
+                    : 'border-purple-500'
+              } ${darkMode ? 'bg-gray-750' : 'bg-gray-50'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className={
+                    aiData.tingkat_rekomendasi.includes('Replikasi') 
+                      ? 'text-emerald-500' 
+                      : aiData.tingkat_rekomendasi.includes('Kolaborasi')
+                        ? 'text-blue-500'
+                        : 'text-purple-500'
+                  } size={20} />
+                  <h4 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    Tingkat Rekomendasi
+                  </h4>
                 </div>
-              ))}
-            </div>
-          </section>
+                <p className={`text-lg font-semibold ${getTingkatRekomendasiColor(aiData.tingkat_rekomendasi, darkMode)}`}>
+                  {aiData.tingkat_rekomendasi}
+                </p>
+              </div>
+            </section>
 
-          {/* Estimasi Biaya */}
-          <section>
-            <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              <BarChart className="text-emerald-500" size={24} />
-              Estimasi Biaya
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-750' : 'bg-gray-50'}`}>
-                <p className={`text-sm mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Infrastruktur</p>
-                <p className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                  {detailData.estimasiBiaya.infrastruktur}
-                </p>
-              </div>
-              <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-750' : 'bg-gray-50'}`}>
-                <p className={`text-sm mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>SDM</p>
-                <p className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                  {detailData.estimasiBiaya.sdm}
-                </p>
-              </div>
-              <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-750' : 'bg-gray-50'}`}>
-                <p className={`text-sm mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Operasional</p>
-                <p className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                  {detailData.estimasiBiaya.operasional}
-                </p>
-              </div>
-              <div className={`p-4 rounded-lg text-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white`}>
-                <p className="text-sm mb-1">Total Investasi</p>
-                <p className="text-lg font-bold">{detailData.estimasiBiaya.total}</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Risiko dan Tantangan */}
-          <section>
-            <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              <AlertTriangle className="text-red-500" size={24} />
-              Risiko & Tantangan
-            </h4>
-            <div className="space-y-3">
-              {detailData.risikoTantangan.map((item, index) => (
-                <div key={index} className={`p-4 rounded-lg ${
-                  darkMode ? 'bg-gray-750 border border-gray-700' : 'bg-gray-50 border border-gray-200'
-                }`}>
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2">
-                    <h5 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                      {item.risiko}
+            {/* Detail Inovasi */}
+            <section>
+              <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                <FileText className="text-blue-500" size={24} />
+                Detail Inovasi
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Inovasi 1 */}
+                <div className={`p-4 rounded-lg border ${darkMode ? 'bg-gray-750 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <h5 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                      Inovasi 1
                     </h5>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold w-fit ${getRiskColor(item.level)}`}>
-                      {item.level}
+                    <span className="px-2 py-1 bg-blue-500 text-white text-xs rounded-full">
+                      {kematangan_1}
                     </span>
                   </div>
+                  <p className={`font-semibold mb-3 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    {inovasi_1_judul}
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <span className={`font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>OPD:</span>
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{opd_1}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className={`font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Urusan:</span>
+                      <span className={`px-2 py-0.5 rounded text-xs ${darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+                        {urusan_1}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className={`font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tahap:</span>
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{tahap_1}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Inovasi 2 */}
+                <div className={`p-4 rounded-lg border ${darkMode ? 'bg-gray-750 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <h5 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                      Inovasi 2
+                    </h5>
+                    <span className="px-2 py-1 bg-blue-500 text-white text-xs rounded-full">
+                      {kematangan_2}
+                    </span>
+                  </div>
+                  <p className={`font-semibold mb-3 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    {inovasi_2_judul}
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <span className={`font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>OPD:</span>
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{opd_2}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className={`font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Urusan:</span>
+                      <span className={`px-2 py-0.5 rounded text-xs ${darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+                        {urusan_2}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className={`font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tahap:</span>
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{tahap_2}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Alasan Kesesuaian */}
+            <section>
+              <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                <Users className="text-purple-500" size={24} />
+                Alasan Kesesuaian
+              </h4>
+              <div className={`p-4 rounded-lg border-l-4 border-purple-500 ${
+                darkMode ? 'bg-purple-900/20 text-gray-300' : 'bg-purple-50 text-gray-700'
+              }`}>
+                <p className="leading-relaxed">{aiData.alasan_kesesuaian}</p>
+              </div>
+            </section>
+
+            {/* Manfaat Kolaborasi */}
+            <section>
+              <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                <Target className="text-green-500" size={24} />
+                Manfaat Kolaborasi
+              </h4>
+              <div className="space-y-2">
+                {aiData.manfaat.map((item, index) => (
+                  <div key={index} className={`flex items-start gap-3 p-3 rounded-lg ${
+                    darkMode ? 'bg-green-900/20 border border-green-700/30' : 'bg-green-50 border border-green-200'
+                  }`}>
+                    <CheckCircle size={20} className="text-green-500 flex-shrink-0 mt-0.5" />
+                    <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Potensi Dampak */}
+            <section>
+              <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                <TrendingUp className="text-blue-500" size={24} />
+                Potensi Dampak
+              </h4>
+              <div className="space-y-2">
+                {aiData.potensi_dampak.map((item, index) => (
+                  <div key={index} className={`flex items-start gap-3 p-3 rounded-lg ${
+                    darkMode ? 'bg-blue-900/20 border border-blue-700/30' : 'bg-blue-50 border border-blue-200'
+                  }`}>
+                    <Zap size={20} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                    <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Footer Disclaimer */}
+            <div className={`p-4 rounded-lg border-l-4 border-yellow-500 ${
+              darkMode ? 'bg-yellow-900/20' : 'bg-yellow-50'
+            }`}>
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="text-yellow-500 flex-shrink-0" size={20} />
+                <div>
                   <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    <strong className={darkMode ? 'text-gray-200' : 'text-gray-800'}>Mitigasi:</strong> {item.mitigasi}
+                    <strong className={darkMode ? 'text-yellow-400' : 'text-yellow-700'}>Catatan:</strong> 
+                    {' '}Analisis ini dihasilkan oleh AI BRIDA Jatim sebagai pendukung pengambilan keputusan. 
+                    Untuk implementasi, diperlukan kajian lebih mendalam dan melibatkan semua stakeholder terkait.
                   </p>
                 </div>
-              ))}
+              </div>
             </div>
-          </section>
-
-          {/* Indikator Keberhasilan */}
-          <section>
-            <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              <CheckCircle className="text-teal-500" size={24} />
-              Indikator Keberhasilan
-            </h4>
-            <div className="overflow-x-auto">
-              <table className={`w-full ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                <thead className={darkMode ? 'bg-gray-750' : 'bg-gray-100'}>
-                  <tr>
-                    <th className={`text-left p-3 font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                      Indikator
-                    </th>
-                    <th className={`text-left p-3 font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                      Target
-                    </th>
-                    <th className={`text-left p-3 font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                      Periode
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detailData.indikatorKeberhasilan.map((item, index) => (
-                    <tr key={index} className={`border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                      <td className="p-3">{item.indikator}</td>
-                      <td className="p-3 font-semibold text-green-500">{item.target}</td>
-                      <td className="p-3">{item.periode}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* Dampak Jangka Panjang */}
-          <section>
-            <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              <TrendingUp className="text-blue-500" size={24} />
-              Dampak Jangka Panjang
-            </h4>
-            <ul className="space-y-2">
-              {detailData.dampakJangkaPanjang.map((dampak, index) => (
-                <li key={index} className={`flex items-start gap-3 p-3 rounded-lg ${
-                  darkMode ? 'bg-blue-900/20' : 'bg-blue-50'
-                }`}>
-                  <CheckCircle size={18} className="text-blue-500 flex-shrink-0 mt-0.5" />
-                  <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{dampak}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {/* Rekomendasi Lanjutan */}
-          <section>
-            <h4 className={`text-xl font-bold mb-4 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              <FileText className="text-purple-500" size={24} />
-              Rekomendasi Lanjutan
-            </h4>
-            <ul className="space-y-2">
-              {detailData.rekomendasiLanjutan.map((rekomendasi, index) => (
-                <li key={index} className={`flex items-start gap-3 p-3 rounded-lg ${
-                  darkMode ? 'bg-purple-900/20' : 'bg-purple-50'
-                }`}>
-                  <Shield size={18} className="text-purple-500 flex-shrink-0 mt-0.5" />
-                  <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{rekomendasi}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {/* Footer Disclaimer */}
-          <div className={`p-4 rounded-lg border-l-4 border-yellow-500 ${
-            darkMode ? 'bg-yellow-900/20' : 'bg-yellow-50'
-          }`}>
-            <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              <strong className={darkMode ? 'text-yellow-400' : 'text-yellow-700'}>Catatan:</strong> 
-              {' '}Analisis ini dihasilkan oleh sistem AI BRIDA Jatim sebagai pendukung pengambilan keputusan. 
-              Untuk implementasi, diperlukan kajian lebih mendalam dan melibatkan semua stakeholder terkait.
-            </p>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -110,3 +110,14 @@ async def get_stats():
     FROM data_inovasi;
     """
     return await database.fetch_one(query)
+
+
+@router.get("/inovasi-list")
+async def get_inovasi_list():
+    query = """
+    SELECT id, judul_inovasi
+    FROM data_inovasi
+    WHERE judul_inovasi IS NOT NULL
+    ORDER BY judul_inovasi;
+    """
+    return await database.fetch_all(query)

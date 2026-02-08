@@ -5,6 +5,10 @@ from app.routers.ai_insight import router as ai_router
 from app.routers import recommendations
 from app.routers import dashboard, recommendations, ai_insight, ai_collaboration
 from app.database import connect_to_db, close_db_connection
+from app.services.clustering_service import (
+    load_cache_from_database,
+    check_and_auto_run_clustering,
+)  # ✅ TAMBAHAN
 
 app = FastAPI(title="Backend BRIDA Jatim")
 
@@ -31,6 +35,12 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     await connect_to_db()
+
+    # ✅ Load existing cache from database
+    await load_cache_from_database()
+
+    # ✅ Check for new data and auto-run clustering if needed (threshold: 50)
+    await check_and_auto_run_clustering(threshold=50)
 
 
 @app.on_event("shutdown")

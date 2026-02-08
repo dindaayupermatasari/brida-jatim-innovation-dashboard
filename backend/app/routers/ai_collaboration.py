@@ -41,4 +41,17 @@ async def simulate_ai_collaboration(inovasi_1_id: int, inovasi_2_id: int):
     except Exception:
         raise HTTPException(status_code=500, detail="Format respon AI tidak valid")
 
-    return {"skor_kecocokan": score, "hasil_ai": ai_result}
+    return {
+        "inovasi_1": {
+            "id": inn1["id"],
+            "judul": inn1.get("judul_inovasi"),
+            "opd": inn1.get("admin_opd") or inn1.get("opd") or "-",
+        },
+        "inovasi_2": {
+            "id": inn2["id"],
+            "judul": inn2.get("judul_inovasi"),
+            "opd": inn2.get("admin_opd") or inn2.get("opd") or "-",
+        },
+        "skor_kecocokan": score,
+        "hasil_ai": ai_result,
+    }
