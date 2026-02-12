@@ -1,7 +1,8 @@
 """
 Enhanced Chatbot Service with Hybrid Search (Vector + SQL)
-✅ IMPROVED: Better typo tolerance and vector search fallback
-✅ IMPROVED: Friendly and natural conversation style for general users
+IMPROVED: Better typo tolerance and vector search fallback
+IMPROVED: Friendly and natural conversation style for general users
+IMPROVED: Complete data field extraction from database
 """
 
 from app.services.ai_service import call_gemini
@@ -16,13 +17,11 @@ import json
 import re
 
 
-# ===============================
-# HELPER: EXTRACT KEYWORDS (IMPROVED)
-# ===============================
+# EXtraction Keyword
 def extract_keywords(question: str) -> List[str]:
     """
     Extract potential inovasi names from question.
-    ✅ IMPROVED: More aggressive keyword extraction for better typo tolerance
+    IMPROVED: More aggressive keyword extraction for better typo tolerance
     """
     keywords = []
 
@@ -73,9 +72,7 @@ def extract_keywords(question: str) -> List[str]:
     return unique_keywords
 
 
-# ===============================
-# HELPER: DETECT QUERY TYPE
-# ===============================
+# Detect query
 def detect_query_type(question: str) -> str:
     """
     Deteksi jenis pertanyaan user.
@@ -113,9 +110,7 @@ def detect_query_type(question: str) -> str:
     return "general"
 
 
-# ===============================
 # DATABASE RETRIEVAL FUNCTIONS (WITH ERROR HANDLING)
-# ===============================
 async def get_collaboration_data(
     inovasi_id: Optional[int] = None, limit: int = 3
 ) -> List[Dict]:
@@ -153,7 +148,6 @@ async def get_collaboration_data(
             if results:
                 return [dict(r) for r in results]
 
-            # Fallback: Use vector search if no clustering results
             print(
                 f"🔄 No clustering results for inovasi {inovasi_id}, using vector search..."
             )
@@ -258,14 +252,12 @@ async def get_cached_dashboard_insight() -> Optional[str]:
         return None
 
 
-# ===============================
-# MAIN CHATBOT FUNCTION (IMPROVED)
-# ===============================
+# MAIN CHATBOT FUNCTION
 async def chatbot_answer(question: str) -> str:
     """
     Main chatbot logic dengan strategi pencarian bertingkat:
-    ✅ IMPROVED: Multi-stage search with vector fallback
-    ✅ IMPROVED: Friendly conversation style
+    IMPROVED: Multi-stage search with vector fallback
+    IMPROVED: Friendly conversation style
 
     1. Extract keywords dari pertanyaan
     2. Detect tipe query (inovasi/kolaborasi/statistik/general)
@@ -408,13 +400,12 @@ async def chatbot_answer(question: str) -> str:
         return "Wah, ada kesalahan sistem nih. Coba lagi ya, atau hubungi admin kalau masih bermasalah! 🙏"
 
 
-# ===============================
-# PROMPT BUILDER (FRIENDLY VERSION)
-# ===============================
+# PROMPT BUILDER
 def build_chatbot_prompt(question: str, context_data: Dict) -> str:
     """
     Build prompt yang friendly dan natural untuk user umum.
-    ✅ IMPROVED: Casual and friendly conversation style
+    IMPROVED: Casual and friendly conversation style
+    IMPROVED: Complete data field information
     """
 
     system_role = """
@@ -429,13 +420,14 @@ GAYA KOMUNIKASI:
 - Hindari bahasa terlalu formal seperti "Yang Terhormat", "Hormat kami", "Atas perhatiannya"
 - Jika data tidak lengkap, sampaikan dengan jujur tapi tetap membantu
 - Jika hasil pencarian tidak exact match, jelaskan dengan ramah
+- Rapikan kalimat dan paragrafnya
 
 ATURAN BAHASA:
-- Gunakan "kamu" bukan "Anda" 
+- Gunakan "Anda" 
 - Sapa dengan ramah: "Halo!", "Hai!", atau langsung jawab
 - Akhiri dengan encouraging: "Semoga membantu!", "Ada yang ingin ditanyakan lagi?", "Mau tahu lebih lanjut?"
 - JANGAN gunakan penutup formal seperti "Hormat kami", "Terima kasih atas perhatiannya", "Yang Terhormat"
-- Singkat tapi lengkap (maksimal 150 kata)
+- Singkat tapi lengkap, tapi tidak terlalu singkat, sampaikan apa saja yang bisa disampaikan
 - Gunakan format list dengan emoji untuk data yang banyak
 
 CONTOH GAYA JAWABAN:
@@ -469,20 +461,31 @@ Semoga membantu ya! Ada yang mau ditanyakan lagi? 😊"
             elif method == "hybrid":
                 search_info = f"(🎯 Pencarian gabungan - kesesuaian {score:.0%})"
 
-        # Inovasi data
+        # Inovasi data - IMPROVED: Complete field extraction
         if "inovasi" in content:
             inv = content["inovasi"]
             db_context += f"""
 DATA INOVASI {search_info}:
 - Judul: {inv.get('judul_inovasi', '-')}
-- OPD: {inv.get('admin_opd', '-')}
-- Urusan: {inv.get('urusan_utama', '-')}
+- Pemerintah Daerah: {inv.get('pemda', '-')}
+- OPD/Admin: {inv.get('admin_opd', '-')}
+- Inisiator: {inv.get('inisiator', '-')}
+- Nama Inisiator: {inv.get('nama_inisiator', '-')}
+- Bentuk Inovasi: {inv.get('bentuk_inovasi', '-')}
 - Jenis: {inv.get('jenis', '-')}
-- Bentuk: {inv.get('bentuk_inovasi', '-')}
-- Tahapan: {inv.get('tahapan_inovasi', '-')}
-- Kematangan: {inv.get('label_kematangan', '-')}
+- Asta Cipta: {inv.get('asta_cipta', '-')}
+- Urusan Utama: {inv.get('urusan_utama', '-')}
+- Urusan Lain yang Beririsan: {inv.get('urusan_lain_yang_beririsan', '-')}
+- Tahapan Inovasi: {inv.get('tahapan_inovasi', '-')}
+- Tingkat Kematangan: {inv.get('label_kematangan', '-')} (Skor: {inv.get('kematangan', '-')})
+- Tanggal Penerapan: {inv.get('tanggal_penerapan', '-')}
+- Tanggal Pengembangan: {inv.get('tanggal_pengembangan', '-')}
+- Tanggal Input: {inv.get('tanggal_input', '-')}
+- Video Tersedia: {'Ya' if inv.get('video') else 'Tidak'}
+- Link Video: {inv.get('link_video', '-')}
+- Koordinat: Lat {inv.get('lat', '-')}, Long {inv.get('lo', '-')}
 
-Tips: Jelaskan dengan bahasa sederhana, pakai emoji yang cocok!
+Tips: Jelaskan dengan bahasa sederhana, pakai emoji yang cocok! Fokuskan pada informasi yang paling relevan dengan pertanyaan user.
 """
 
         # Kolaborasi data
@@ -540,10 +543,11 @@ INSTRUKSI PENTING:
 3. Gunakan "kamu" bukan "Anda"
 4. JANGAN pakai "Yang Terhormat", "Hormat kami", dll
 5. Akhiri dengan encouraging statement
-6. Maksimal 150 kata, to the point
-7. Jika data fuzzy match, sampaikan dengan cara yang friendly
-8. Format dengan bullet points (pakai emoji) jika banyak info
-9. Jangan mengarang data yang tidak ada
+6. Jika data fuzzy match, sampaikan dengan cara yang friendly
+7. Format dengan bullet points (pakai emoji) jika banyak info
+8. Jangan mengarang data yang tidak ada
+9. Fokuskan pada informasi yang paling relevan dengan pertanyaan user
+10. Jika ada field yang "-" (tidak ada data), tidak perlu disebutkan
 
 JAWABAN (langsung, tanpa salam pembuka yang terlalu panjang):
 """
