@@ -24,7 +24,6 @@ async def simulate_ai_collaboration(inovasi_1_id: int, inovasi_2_id: int):
     if not inovasi_1 or not inovasi_2:
         raise HTTPException(status_code=404, detail="Data inovasi tidak ditemukan")
 
-    # 🔥 INI PENTING
     inn1 = dict(inovasi_1)
     inn2 = dict(inovasi_2)
 

@@ -148,7 +148,7 @@ async def ai_collaboration_insight(inovasi_1: int, inovasi_2: int):
     )
 
     try:
-        ai_text = call_gemini(prompt, mode="insight")
+        ai_text = call_gemini(prompt, mode="recommendation")
         ai_text = ai_text.strip().replace("```json", "").replace("```", "")
         return json.loads(ai_text)
 

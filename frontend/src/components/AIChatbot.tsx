@@ -57,7 +57,6 @@ interface ExplorationResult {
   opd2?: string;
 }
 
-// Interface untuk data detail yang akan dikirim ke CollaborationDetail
 interface DetailData {
   inovasi_1_id: number;
   inovasi_2_id: number;
@@ -96,6 +95,7 @@ const API_ENDPOINTS = {
   innovations: `${API_BASE_URL}/dashboard/inovasi-list`,
   topRecommendations: `${API_BASE_URL}/api/recommendations/top-clusters`,
   explorationSimulate: `${API_BASE_URL}/ai-input-collaboration/simulate`,
+  chatbot: `${API_BASE_URL}/api/chatbot`,
 };
 
 // ==================== SEARCHABLE DROPDOWN COMPONENT ====================
@@ -226,6 +226,96 @@ const TypingIndicator = () => (
   </div>
 );
 
+// ==================== FORMAT BOT MESSAGE ====================
+const formatBotMessage = (text: string, darkMode: boolean) => {
+  // Remove multiple asterisks (**, ***, etc.) and clean up formatting
+  let cleanedText = text.replace(/\*\*\*+/g, '**'); // Reduce multiple asterisks
+  cleanedText = cleanedText.replace(/\*\*/g, ''); // Remove all bold markers
+  
+  // Split by double newlines to create sections
+  const sections = cleanedText.split('\n\n');
+  
+  return sections.map((section, idx) => {
+    const trimmedSection = section.trim();
+    if (!trimmedSection) return null;
+    
+    // Check if it's a list (contains numbered items, bullets, or asterisks)
+    if (trimmedSection.match(/^\d+\.|^[-•*]\s/m)) {
+      const items = trimmedSection.split('\n').filter(line => line.trim());
+      return (
+        <div key={idx} className={`rounded-lg p-3 my-2 ${darkMode ? 'bg-gray-800/50' : 'bg-green-50'}`}>
+          <ul className="space-y-2">
+            {items.map((item, i) => {
+              // Clean item from markers
+              const cleanItem = item.replace(/^\d+\.\s*|^[-•*]\s*/, '').trim();
+              if (!cleanItem) return null;
+              
+              return (
+                <li key={i} className="flex items-start gap-2.5">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold mt-0.5">
+                    {i + 1}
+                  </span>
+                  <span className="flex-1 text-sm leading-relaxed">{cleanItem}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      );
+    }
+    
+    // Check if it's a header (ALL CAPS, starts with ###, or clearly a title)
+    if (trimmedSection.match(/^[A-Z\s]{10,}$/) || trimmedSection.startsWith('###') || trimmedSection.endsWith(':')) {
+      const headerText = trimmedSection.replace(/^###\s*/, '').replace(/:$/, '');
+      return (
+        <div key={idx} className="mt-3 mb-2">
+          <h4 className={`font-bold text-sm flex items-center gap-2 ${
+            darkMode ? 'text-green-400' : 'text-green-600'
+          }`}>
+            <span className="w-1 h-4 bg-green-500 rounded"></span>
+            {headerText}
+          </h4>
+        </div>
+      );
+    }
+    
+    // Check if section contains inline bullets (text with * in middle)
+    if (trimmedSection.includes('\n*') || trimmedSection.includes('\n-')) {
+      const lines = trimmedSection.split('\n');
+      const firstLine = lines[0];
+      const bulletItems = lines.slice(1).filter(l => l.trim().match(/^[-•*]\s/));
+      
+      if (bulletItems.length > 0) {
+        return (
+          <div key={idx} className="my-2">
+            <p className="text-sm leading-relaxed mb-2 font-medium">{firstLine}</p>
+            <div className={`rounded-lg p-3 ${darkMode ? 'bg-gray-800/50' : 'bg-green-50'}`}>
+              <ul className="space-y-1.5">
+                {bulletItems.map((item, i) => {
+                  const cleanItem = item.replace(/^[-•*]\s*/, '').trim();
+                  return (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="text-green-500 font-bold mt-0.5">✓</span>
+                      <span className="flex-1 text-sm">{cleanItem}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        );
+      }
+    }
+    
+    // Regular paragraph - enhance with better formatting
+    return (
+      <p key={idx} className="text-sm leading-relaxed mb-2 text-justify">
+        {trimmedSection}
+      </p>
+    );
+  }).filter(Boolean); // Remove null elements
+};
+
 // ==================== MAIN COMPONENT ====================
 export function AIChatbot({ darkMode }: AIChatbotProps) {
   // ========== STATE MANAGEMENT ==========
@@ -251,6 +341,15 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
   const [explorationError, setExplorationError] = useState<string | null>(null);
   const [innovationList, setInnovationList] = useState<Innovation[]>([]);
   const [isLoadingInnovation, setIsLoadingInnovation] = useState(false);
+  
+  // ✅ IMPROVED: Chatbot State with Suggested Prompts
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [suggestedPrompts] = useState([
+    "Apa itu POP SURGA?",
+    "Berapa total inovasi di Jatim?",
+    "Rekomendasi kolaborasi untuk inovasi kesehatan",
+    "Bagaimana cara mengukur kematangan inovasi?"
+  ]);
   
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -312,7 +411,6 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
       const result = await response.json();
       console.log('API Response:', result);
 
-      // Handle empty state
       if (result.status === 'empty' || !result.data || result.data.length === 0) {
         setRecommendationError(result.message || 'Belum ada rekomendasi tersedia. Clustering mungkin belum dijalankan.');
         setTopRecommendations([]);
@@ -320,7 +418,6 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
         return;
       }
 
-      // Success - set data
       if (result.last_run) {
         setLastRunTime(result.last_run);
       }
@@ -341,56 +438,89 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
     fetchTopRecommendations();
   }, []);
 
-  // ========== CHATBOT FUNCTIONS ==========
-  const simulateTyping = (text: string) => {
-    const typingMessage: Message = {
+  // ========== CHATBOT FUNCTIONS (IMPROVED) ==========
+  
+  // ✅ IMPROVED: Send message with better UX
+  const handleSend = async (messageText?: string) => {
+    const textToSend = messageText || input.trim();
+    if (!textToSend || isSendingMessage) return;
+
+    const userMessage: Message = {
       id: Date.now(),
+      type: 'user',
+      text: textToSend,
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsSendingMessage(true);
+
+    // Show typing indicator
+    const typingMessage: Message = {
+      id: Date.now() + 1,
       type: 'typing',
       text: '',
     };
     setMessages(prev => [...prev, typingMessage]);
 
-    setTimeout(() => {
+    try {
+      const response = await fetch(API_ENDPOINTS.chatbot, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question: textToSend
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Remove typing indicator and add bot response
       setMessages(prev => {
         const filtered = prev.filter(m => m.type !== 'typing');
         return [...filtered, {
           id: Date.now(),
           type: 'bot',
-          text: text,
+          text: data.answer || 'Maaf, tidak ada respons dari AI.',
         }];
       });
-    }, 1500);
-  };
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now(),
-      type: 'user',
-      text: input,
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    
-    if (topRecommendations.length > 0) {
-      const top = topRecommendations[0];
-      const scorePercent = scoreToPercentage(top.skor_kolaborasi);
-      const responseText = `Rekomendasi kolaborasi terbaik saat ini adalah antara "${top.inovasi_1.judul}" (${top.inovasi_1.urusan}) dan "${top.inovasi_2.judul}" (${top.inovasi_2.urusan}) dengan skor kecocokan ${scorePercent}%. Kedua inovasi berada di tahap ${top.inovasi_1.tahap} dengan tingkat kematangan ${top.inovasi_1.kematangan}.`;
-      simulateTyping(responseText);
-    } else {
-      simulateTyping('Mohon maaf, saat ini belum ada rekomendasi kolaborasi tersedia. Silakan jalankan clustering terlebih dahulu.');
+    } catch (error) {
+      console.error('Chatbot error:', error);
+      
+      // Remove typing indicator and show error
+      setMessages(prev => {
+        const filtered = prev.filter(m => m.type !== 'typing');
+        return [...filtered, {
+          id: Date.now(),
+          type: 'error',
+          text: 'Gagal terhubung ke AI Assistant. Silakan coba lagi.',
+        }];
+      });
+    } finally {
+      setIsSendingMessage(false);
     }
-
-    setInput('');
   };
 
-  const handleRetry = () => {
-    if (topRecommendations.length > 0) {
-      const top = topRecommendations[0];
-      const scorePercent = scoreToPercentage(top.skor_kolaborasi);
-      const responseText = `Rekomendasi teratas: kolaborasi "${top.inovasi_1.judul}" dan "${top.inovasi_2.judul}" dengan skor ${scorePercent}%.`;
-      simulateTyping(responseText);
+  // ✅ Handle suggested prompt click
+  const handleSuggestedPromptClick = (prompt: string) => {
+    setInput(prompt);
+    handleSend(prompt);
+  };
+
+  // ✅ Retry with last user message
+  const handleRetry = async () => {
+    const lastUserMessage = [...messages].reverse().find(m => m.type === 'user');
+    
+    if (lastUserMessage) {
+      setInput(lastUserMessage.text);
+      setMessages(prev => prev.filter(m => m.type !== 'error'));
+      setTimeout(() => handleSend(lastUserMessage.text), 100);
     }
   };
 
@@ -454,14 +584,12 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
     }
   };
 
-  // ========== HANDLE VIEW DETAIL - UPDATED ==========
+  // ========== HANDLE VIEW DETAIL ==========
   const handleViewDetail = async (collaboration: TopRecommendation) => {
-    // Cari data lengkap dari innovationList untuk mendapatkan OPD
     let opd_1 = '';
     let opd_2 = '';
     
     try {
-      // Fetch detail lengkap dari API jika perlu
       const response = await fetch(API_ENDPOINTS.innovations);
       if (response.ok) {
         const fullData = await response.json();
@@ -495,7 +623,7 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
     setActiveTab('exploration');
   };
 
-  // ========== RENDER DETAIL VIEW - UPDATED ==========
+  // ========== RENDER DETAIL VIEW ==========
   if (activeTab === 'exploration' && selectedDetail) {
     return (
       <CollaborationDetail
@@ -523,7 +651,7 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
 
   // ========== MAIN RENDER ==========
   return (
-    <div className="space-y-8 pb-6 max-w-full">
+    <div className="space-y-6 pb-6 max-w-7xl mx-auto px-4">
       {/* Page Header */}
       <div>
         <h2 className={`text-2xl md:text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
@@ -539,497 +667,535 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
         )}
       </div>
 
-      {/* Main Layout: Two Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* LEFT COLUMN - Main Content */}
-        <div className="lg:col-span-2 space-y-8">
-          
-          {/* ============= SECTION 1: TOP REKOMENDASI ============= */}
+      {/* ✅ UPDATED: Increased spacing without HR dividers - Each section has more breathing room */}
+      <div className="space-y-32">
+        
+        {/* ============= SECTION 1: TOP REKOMENDASI (Full Width) ============= */}
+        <div className="rounded-3xl p-3 bg-white/40 dark:bg-gray-900/40">
           <section className={`rounded-2xl shadow-2xl overflow-hidden ${
             darkMode ? 'bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border border-blue-800' : 'bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200'
           }`}>
-            <div className={`px-6 py-5 border-b ${darkMode ? 'border-blue-800 bg-blue-900/60' : 'border-blue-200 bg-white/80'}`}>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-blue-500 rounded-lg">
-                  <Sparkles className="text-white" size={20} />
-                </div>
-                <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                  Top Rekomendasi Kolaborasi
-                </h3>
+          <div className={`px-6 py-5 border-b ${darkMode ? 'border-blue-800 bg-blue-900/60' : 'border-blue-200 bg-white/80'}`}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-blue-500 rounded-lg">
+                <Sparkles className="text-white" size={20} />
               </div>
-              <p className={`text-sm ${darkMode ? 'text-blue-200' : 'text-gray-600'}`}>
-                Pasangan inovasi dengan skor similarity tertinggi dari setiap cluster
-              </p>
+              <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                Top Rekomendasi Kolaborasi
+              </h3>
             </div>
+            <p className={`text-sm ${darkMode ? 'text-blue-200' : 'text-gray-600'}`}>
+              Pasangan inovasi dengan skor similarity tertinggi dari setiap cluster
+            </p>
+          </div>
 
-            <div className="p-6 space-y-6">
-              {/* Loading State */}
-              {isLoadingRecommendations && (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="animate-spin text-blue-500 mb-4" size={48} />
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Memuat rekomendasi...
-                  </p>
-                </div>
-              )}
+          <div className="p-6">
+            {isLoadingRecommendations && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="animate-spin text-blue-500 mb-4" size={48} />
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Memuat rekomendasi...
+                </p>
+              </div>
+            )}
 
-              {/* Error State */}
-              {recommendationError && !isLoadingRecommendations && (
-                <div className={`rounded-lg p-6 text-center ${darkMode ? 'bg-red-900/20 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
-                  <AlertCircle className={`mx-auto mb-3 ${darkMode ? 'text-red-400' : 'text-red-600'}`} size={48} />
-                  <p className={`text-sm font-medium mb-3 ${darkMode ? 'text-red-300' : 'text-red-800'}`}>
-                    {recommendationError}
-                  </p>
-                  <button
-                    onClick={fetchTopRecommendations}
-                    className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium mx-auto"
-                  >
-                    <RefreshCw size={16} />
-                    Coba Lagi
-                  </button>
-                </div>
-              )}
+            {recommendationError && !isLoadingRecommendations && (
+              <div className={`rounded-lg p-6 text-center ${darkMode ? 'bg-red-900/20 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
+                <AlertCircle className={`mx-auto mb-3 ${darkMode ? 'text-red-400' : 'text-red-600'}`} size={48} />
+                <p className={`text-sm font-medium mb-3 ${darkMode ? 'text-red-300' : 'text-red-800'}`}>
+                  {recommendationError}
+                </p>
+                <button
+                  onClick={fetchTopRecommendations}
+                  className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium mx-auto"
+                >
+                  <RefreshCw size={16} />
+                  Coba Lagi
+                </button>
+              </div>
+            )}
 
-              {/* Empty State */}
-              {!isLoadingRecommendations && !recommendationError && topRecommendations.length === 0 && (
-                <div className={`rounded-lg p-6 text-center ${darkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Belum ada rekomendasi tersedia
-                  </p>
-                </div>
-              )}
+            {!isLoadingRecommendations && !recommendationError && topRecommendations.length === 0 && (
+              <div className={`rounded-lg p-6 text-center ${darkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Belum ada rekomendasi tersedia
+                </p>
+              </div>
+            )}
 
-              {/* Recommendations List */}
-              {!isLoadingRecommendations && topRecommendations.map((item, index) => {
-                const scorePercent = scoreToPercentage(item.skor_kolaborasi);
-                
-                return (
-                  <div
-                    key={`${item.cluster_id}-${item.inovasi_1.id}-${item.inovasi_2.id}`}
-                    className={`rounded-xl p-6 transition-all hover:scale-[1.01] ${
-                      darkMode ? 'bg-gray-800 hover:bg-gray-750 shadow-lg' : 'bg-white hover:shadow-xl shadow-md'
-                    }`}
-                  >
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
-                            index === 0 ? 'bg-yellow-500 text-white' :
-                            index === 1 ? 'bg-gray-400 text-white' :
-                            index === 2 ? 'bg-orange-600 text-white' :
-                            'bg-gray-600 text-white'
+            {/* ✅ GRID LAYOUT for Recommendations - FIXED VERSION */}
+            {!isLoadingRecommendations && topRecommendations.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {topRecommendations.map((item, index) => {
+                  const scorePercent = scoreToPercentage(item.skor_kolaborasi);
+                  
+                  return (
+                    <div
+                      key={`${item.cluster_id}-${item.inovasi_1.id}-${item.inovasi_2.id}`}
+                      className={`relative rounded-xl p-5 transition-all hover:scale-[1.02] flex flex-col ${
+                        darkMode ? 'bg-gray-800 hover:bg-gray-750 shadow-lg' : 'bg-white hover:shadow-xl shadow-md'
+                      }`}
+                    >
+                      {/* ✅ FIX 1: Skor kecocokan diperkecil dan di-center */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                            Rekomendasi Kolaborasi {index + 1}
+                          </h4>
+                          <div className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {item.jumlah_inovasi} inovasi terkait
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-1 ml-3">
+                          <div className={`px-4 py-2 rounded-lg text-base font-bold ${getScoreBadgeColor(item.skor_kolaborasi)}`}>
+                            {scorePercent}%
+                          </div>
+                          <div className={`text-xs font-semibold text-center whitespace-nowrap ${
+                            item.skor_kolaborasi >= 0.9 ? 'text-emerald-600 dark:text-emerald-400' :
+                            item.skor_kolaborasi >= 0.7 ? 'text-blue-600 dark:text-blue-400' :
+                            'text-yellow-600 dark:text-yellow-400'
                           }`}>
-                            #{index + 1}
-                          </span>
-                          <span className={`text-xs font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            Cluster {item.cluster_id}
-                          </span>
-                          <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                            • {item.jumlah_inovasi} inovasi terkait
-                          </span>
+                            {getScoreLabel(item.skor_kolaborasi)}
+                          </div>
                         </div>
                       </div>
-                      
-                      {/* Score Badge */}
-                      <div className="text-center ml-4">
-                        <div className={`px-4 py-2 rounded-lg text-lg font-bold ${getScoreBadgeColor(item.skor_kolaborasi)}`}>
-                          {scorePercent}%
+
+                      {/* ✅ FIX 2: Menggunakan min-height untuk membuat semua card sama tinggi */}
+                      <div className="space-y-2 mb-3 flex-1">
+                        <div className={`px-3 py-2 rounded-lg ${darkMode ? 'bg-gray-700/80' : 'bg-gray-50'}`}>
+                          <p className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Inovasi 1
+                          </p>
+                          <p className={`text-sm font-semibold mb-2 line-clamp-2 min-h-[40px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                            {item.inovasi_1.judul}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            <span className={`text-xs px-2 py-0.5 rounded ${darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                              {item.inovasi_1.urusan}
+                            </span>
+                            <span className={`text-xs px-2 py-0.5 rounded ${darkMode ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
+                              {item.inovasi_1.tahap}
+                            </span>
+                          </div>
                         </div>
-                        <div className={`text-xs mt-1 font-semibold ${
-                          item.skor_kolaborasi >= 0.9 ? 'text-emerald-600 dark:text-emerald-400' :
-                          item.skor_kolaborasi >= 0.7 ? 'text-blue-600 dark:text-blue-400' :
-                          'text-yellow-600 dark:text-yellow-400'
+                        
+                        <div className={`px-3 py-2 rounded-lg ${darkMode ? 'bg-gray-700/80' : 'bg-gray-50'}`}>
+                          <p className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Inovasi 2
+                          </p>
+                          <p className={`text-sm font-semibold mb-2 line-clamp-2 min-h-[40px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                            {item.inovasi_2.judul}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            <span className={`text-xs px-2 py-0.5 rounded ${darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                              {item.inovasi_2.urusan}
+                            </span>
+                            <span className={`text-xs px-2 py-0.5 rounded ${darkMode ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
+                              {item.inovasi_2.tahap}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ✅ FIX 3: Label kematangan diperbesar dan disejajarkan */}
+                      <div className="mb-3 flex items-center">
+                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold ${
+                          darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
                         }`}>
-                          {getScoreLabel(item.skor_kolaborasi)}
-                        </div>
+                          {item.inovasi_1.kematangan}
+                        </span>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleViewDetail(item)}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors text-xs font-medium"
+                        >
+                          Detail
+                          <ArrowRight size={14} />
+                        </button>
+                        <button 
+                          onClick={() => setSelectedPdfRecommendation(item)}
+                          className="flex items-center justify-center gap-1.5 bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 transition-colors text-xs font-medium"
+                        >
+                          <FileDown size={14} />
+                          PDF
+                        </button>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+        </div>
 
-                    {/* Innovation Pair */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                      <div className={`px-4 py-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                        <p className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Inovasi 1
-                        </p>
-                        <p className={`text-sm font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                          {item.inovasi_1.judul}
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          <span className={`text-xs px-2 py-0.5 rounded ${darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
-                            {item.inovasi_1.urusan}
-                          </span>
-                          <span className={`text-xs px-2 py-0.5 rounded ${darkMode ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
-                            {item.inovasi_1.tahap}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className={`px-4 py-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                        <p className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Inovasi 2
-                        </p>
-                        <p className={`text-sm font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                          {item.inovasi_2.judul}
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          <span className={`text-xs px-2 py-0.5 rounded ${darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
-                            {item.inovasi_2.urusan}
-                          </span>
-                          <span className={`text-xs px-2 py-0.5 rounded ${darkMode ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
-                            {item.inovasi_2.tahap}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Maturity Badge */}
-                    <div className="mb-4">
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                        darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
-                      }`}>
-                        {item.inovasi_1.kematangan}
-                      </span>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => handleViewDetail(item)}
-                        className="flex-1 flex items-center justify-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
-                      >
-                        Lihat Detail
-                        <ArrowRight size={16} />
-                      </button>
-                      <button 
-                        onClick={() => setSelectedPdfRecommendation(item)}
-                        className="flex items-center justify-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
-                      >
-                        <FileDown size={16} />
-                        PDF
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* ============= SECTION 2: EXPLORATION INPUT ============= */}
+        {/* ============= SECTION 2: EXPLORATION INPUT (Full Width) ============= */}
+        <div className="rounded-3xl p-3 bg-white/40 dark:bg-gray-900/40">
           <section className={`rounded-2xl shadow-2xl ${
             darkMode ? 'bg-gradient-to-br from-purple-900/40 to-pink-900/40 border border-purple-800' : 'bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200'
           }`}>
-            <div className={`px-6 py-5 border-b ${darkMode ? 'border-purple-800 bg-purple-900/60' : 'border-purple-200 bg-white/80'}`}>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-purple-500 rounded-lg">
-                  <Target className="text-white" size={20} />
-                </div>
-                <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                  Eksplorasi Kolaborasi Khusus
-                </h3>
+          <div className={`px-6 py-5 border-b ${darkMode ? 'border-purple-800 bg-purple-900/60' : 'border-purple-200 bg-white/80'}`}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-purple-500 rounded-lg">
+                <Target className="text-white" size={20} />
               </div>
-              <p className={`text-sm ${darkMode ? 'text-purple-200' : 'text-gray-600'}`}>
-                Analisis potensi kolaborasi antara dua inovasi pilihan Anda
-              </p>
+              <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                Eksplorasi Kolaborasi Khusus
+              </h3>
             </div>
+            <p className={`text-sm ${darkMode ? 'text-purple-200' : 'text-gray-600'}`}>
+              Analisis potensi kolaborasi antara dua inovasi pilihan Anda
+            </p>
+          </div>
 
-            <div className="p-6 space-y-4" style={{ overflow: 'visible' }}>
-              {isLoadingInnovation ? (
-                <div className="text-center py-8">
-                  <Loader2 className={`mx-auto mb-3 animate-spin ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} size={32} />
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Memuat daftar inovasi...
-                  </p>
+          <div className="p-6 space-y-4" style={{ overflow: 'visible' }}>
+            {isLoadingInnovation ? (
+              <div className="text-center py-8">
+                <Loader2 className={`mx-auto mb-3 animate-spin ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} size={32} />
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Memuat daftar inovasi...
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ overflow: 'visible' }}>
+                  <SearchableDropdown
+                    options={innovationList}
+                    value={filterInovasi1}
+                    onChange={setFilterInovasi1}
+                    label="Inovasi Pertama"
+                    darkMode={darkMode}
+                  />
+                  <SearchableDropdown
+                    options={innovationList}
+                    value={filterInovasi2}
+                    onChange={setFilterInovasi2}
+                    label="Inovasi Kedua"
+                    darkMode={darkMode}
+                  />
                 </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ overflow: 'visible' }}>
-                    <SearchableDropdown
-                      options={innovationList}
-                      value={filterInovasi1}
-                      onChange={setFilterInovasi1}
-                      label="Inovasi Pertama"
-                      darkMode={darkMode}
-                    />
-                    <SearchableDropdown
-                      options={innovationList}
-                      value={filterInovasi2}
-                      onChange={setFilterInovasi2}
-                      label="Inovasi Kedua"
-                      darkMode={darkMode}
-                    />
-                  </div>
 
-                  {explorationError && (
-                    <div className={`p-3 rounded-lg border ${darkMode ? 'bg-red-900/20 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-700'}`}>
-                      <div className="flex items-center gap-2">
-                        <AlertCircle size={16} />
-                        <span className="text-sm">{explorationError}</span>
-                      </div>
+                {explorationError && (
+                  <div className={`p-3 rounded-lg border ${darkMode ? 'bg-red-900/20 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <AlertCircle size={16} />
+                      <span className="text-sm">{explorationError}</span>
                     </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing || !filterInovasi1 || !filterInovasi2}
+                  className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
+                    isAnalyzing || !filterInovasi1 || !filterInovasi2
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-purple-500 text-white hover:bg-purple-600'
+                  }`}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} />
+                      Menganalisis...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={20} />
+                      Analisis dengan AI
+                    </>
                   )}
+                </button>
+              </>
+            )}
+          </div>
+        </section>
+        </div>
 
-                  <button
-                    onClick={handleAnalyze}
-                    disabled={isAnalyzing || !filterInovasi1 || !filterInovasi2}
-                    className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
-                      isAnalyzing || !filterInovasi1 || !filterInovasi2
-                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                        : 'bg-purple-500 text-white hover:bg-purple-600'
-                    }`}
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <Loader2 className="animate-spin" size={20} />
-                        Menganalisis...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={20} />
-                        Analisis dengan AI
-                      </>
-                    )}
-                  </button>
-                </>
-              )}
-            </div>
-          </section>
-
-          {/* ============= EXPLORATION RESULT ============= */}
-          {showExplorationResult && selectedExploration && (
+        {/* ============= EXPLORATION RESULT ============= */}
+        {showExplorationResult && selectedExploration && (
+          <div className="rounded-3xl p-3 bg-white/40 dark:bg-gray-900/40">
             <div ref={explorationResultRef}>
               <section className={`rounded-2xl shadow-2xl overflow-hidden animate-fadeIn ${
                 darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
               }`}>
-                <div className="bg-gradient-to-r from-purple-500 to-pink-600 text-black p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Sparkles size={20} />
-                        <span className="text-sm font-medium opacity-90">Hasil Analisis AI</span>
-                      </div>
-                      <h4 className="text-2xl font-bold mb-2">{selectedExploration.title}</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedExploration.opd1 && (
-                          <span className="px-3 py-1 bg-white/20 rounded-full text-sm backdrop-blur-sm">
-                            {selectedExploration.opd1}
-                          </span>
-                        )}
-                        {selectedExploration.opd2 && (
-                          <span className="px-3 py-1 bg-white/20 rounded-full text-sm backdrop-blur-sm">
-                            {selectedExploration.opd2}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="ml-4 text-center">
-                      <div className="bg-white text-purple-600 px-4 py-2 rounded-lg text-2xl font-bold">
-                        {selectedExploration.score}%
-                      </div>
-                      <div className="text-xs mt-1 opacity-90">Skor Kecocokan</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-6 space-y-6">
-                  <div className={`p-4 rounded-lg border-l-4 border-purple-500 ${
-                    darkMode ? 'bg-purple-900/20' : 'bg-purple-50'
-                  }`}>
+              <div className="bg-gradient-to-r from-purple-500 to-pink-600 text-white p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <Zap className="text-purple-500" size={20} />
-                      <h5 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                        Tingkat Kolaborasi
-                      </h5>
+                      <Sparkles size={20} />
+                      <span className="text-sm font-medium opacity-90">Hasil Analisis AI</span>
                     </div>
-                    <p className={`text-lg font-semibold ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}>
-                      {selectedExploration.tingkat}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h5 className={`font-semibold mb-3 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                      <Target size={16} className="text-purple-500" />
-                      Manfaat Kolaborasi
-                    </h5>
-                    <div className="space-y-2">
-                      {selectedExploration.manfaat.map((m: string, i: number) => (
-                        <div key={i} className={`flex items-start gap-2 p-2 rounded-lg text-sm ${
-                          darkMode ? 'bg-gray-700 text-gray-300' : 'bg-white border text-gray-700'
-                        }`}>
-                          <span className="font-bold text-purple-500">{i + 1}.</span>
-                          <span>{m}</span>
-                        </div>
-                      ))}
+                    <h4 className="text-2xl font-bold mb-2">{selectedExploration.title}</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedExploration.opd1 && (
+                        <span className="px-3 py-1 bg-white/20 rounded-full text-sm backdrop-blur-sm">
+                          {selectedExploration.opd1}
+                        </span>
+                      )}
+                      {selectedExploration.opd2 && (
+                        <span className="px-3 py-1 bg-white/20 rounded-full text-sm backdrop-blur-sm">
+                          {selectedExploration.opd2}
+                        </span>
+                      )}
                     </div>
                   </div>
-
-                  <div className={`border-t pt-4 ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-                    <h5 className={`font-semibold mb-2 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                      <Users size={16} className="text-purple-500" />
-                      Alasan Sinergi
-                    </h5>
-                    <div className={`text-sm rounded-lg p-4 border-l-4 ${
-                      darkMode 
-                        ? 'text-gray-300 bg-gray-700 border-purple-500' 
-                        : 'text-gray-700 bg-purple-50 border-purple-500'
-                    }`}>
-                      {selectedExploration.alasan}
+                  <div className="ml-4 text-center">
+                    <div className="bg-white text-purple-600 px-4 py-2 rounded-lg text-2xl font-bold">
+                      {selectedExploration.score}%
                     </div>
+                    <div className="text-xs mt-1 opacity-90">Skor Kecocokan</div>
                   </div>
-
-                  <div className={`border-t pt-4 ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-                    <h5 className={`font-semibold mb-3 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                      <TrendingUp size={16} className="text-purple-500" />
-                      Potensi Dampak
-                    </h5>
-                    <div className="space-y-2">
-                      {selectedExploration.dampak.map((d: string, i: number) => (
-                        <div key={i} className={`flex items-start gap-2 p-2 rounded-lg text-sm ${
-                          darkMode ? 'bg-gray-700 text-gray-300' : 'bg-white border text-gray-700'
-                        }`}>
-                          <span className="font-bold text-purple-500">{i + 1}.</span>
-                          <span>{d}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-6 pt-0">
-                  <button 
-                    onClick={() => setPdfData({
-                      inovasi_1: { judul: selectedExploration.judul1, opd: selectedExploration.opd1 },
-                      inovasi_2: { judul: selectedExploration.judul2, opd: selectedExploration.opd2 },
-                      skor_kecocokan: selectedExploration.score,
-                      kategori: getScoreLabel(selectedExploration.score / 100),
-                      hasil_ai: {
-                        manfaat: selectedExploration.manfaat,
-                        alasan: [selectedExploration.alasan],
-                        dampak: selectedExploration.dampak
-                      }
-                    })}
-                    className="w-full flex items-center justify-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
-                  >
-                    <FileDown size={16} />
-                    Export PDF Hasil Eksplorasi
-                  </button>
-                </div>
-              </section>
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT COLUMN - AI Chatbot */}
-        <div className="lg:col-span-1">
-          <div className={`rounded-2xl shadow-xl overflow-hidden sticky top-6 ${
-            darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
-          }`} style={{ height: '700px' }}>
-            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-5">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="bg-white p-2 rounded-lg">
-                  <Bot className="text-green-600" size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg">AI Policy Assistant</h3>
-                  <p className="text-xs text-green-100">Online - Siap Membantu</p>
                 </div>
               </div>
-              <p className="text-xs text-green-50 mt-2">
-                Asisten AI untuk analisis kebijakan kolaborasi inovasi
-              </p>
-            </div>
 
-            <div className="h-[480px] overflow-y-auto p-4 space-y-3">
-              {messages.length === 0 && (
-                <div className={`text-center py-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  <Bot size={48} className="mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">
-                    Tanyakan tentang rekomendasi kolaborasi
+              <div className="p-6 space-y-6">
+                <div className={`p-4 rounded-lg border-l-4 border-purple-500 ${
+                  darkMode ? 'bg-purple-900/20' : 'bg-purple-50'
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Zap className="text-purple-500" size={20} />
+                    <h5 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                      Tingkat Kolaborasi
+                    </h5>
+                  </div>
+                  <p className={`text-lg font-semibold ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}>
+                    {selectedExploration.tingkat}
                   </p>
                 </div>
-              )}
-              
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {message.type === 'typing' ? (
-                    <div className={`rounded-lg p-3 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                      <TypingIndicator />
-                    </div>
-                  ) : message.type === 'error' ? (
-                    <div className="max-w-[90%] rounded-lg p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700">
-                      <div className="flex items-start gap-2 mb-2">
-                        <AlertCircle size={16} className="text-red-600 dark:text-red-400 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="text-sm text-red-800 dark:text-red-200 font-semibold mb-1">
-                            Terjadi Kesalahan
-                          </p>
-                          <p className="text-xs text-red-700 dark:text-red-300">
-                            {message.text}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={handleRetry}
-                        className="flex items-center gap-1 bg-red-600 text-white px-3 py-1.5 rounded text-xs hover:bg-red-700 transition-colors"
-                      >
-                        <RefreshCw size={12} />
-                        Coba Lagi
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      className={`max-w-[90%] rounded-lg p-3 ${
-                        message.type === 'user'
-                          ? 'bg-green-500 text-white'
-                          : darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {message.type === 'bot' && (
-                        <div className="flex items-center gap-2 mb-1">
-                          <Bot size={14} className="text-green-500" />
-                          <span className="text-xs font-semibold text-green-500">AI Assistant</span>
-                        </div>
-                      )}
-                      <p className="text-sm leading-relaxed">{message.text}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
 
-            <div className={`p-4 border-t ${darkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'}`}>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Tanya tentang rekomendasi..."
-                  className={`flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm ${
-                    darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-800'
-                  }`}
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={!input.trim()}
-                  className={`px-3 py-2 rounded-lg transition-colors ${
-                    input.trim()
-                      ? 'bg-green-500 text-white hover:bg-green-600'
-                      : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                  }`}
+                <div>
+                  <h5 className={`font-semibold mb-3 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    <Target size={16} className="text-purple-500" />
+                    Manfaat Kolaborasi
+                  </h5>
+                  <div className="space-y-2">
+                    {selectedExploration.manfaat.map((m: string, i: number) => (
+                      <div key={i} className={`flex items-start gap-2 p-2 rounded-lg text-sm ${
+                        darkMode ? 'bg-gray-700 text-gray-300' : 'bg-white border text-gray-700'
+                      }`}>
+                        <span className="font-bold text-purple-500">{i + 1}.</span>
+                        <span>{m}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={`border-t pt-4 ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+                  <h5 className={`font-semibold mb-2 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    <Users size={16} className="text-purple-500" />
+                    Alasan Sinergi
+                  </h5>
+                  <div className={`text-sm rounded-lg p-4 border-l-4 ${
+                    darkMode 
+                      ? 'text-gray-300 bg-gray-700 border-purple-500' 
+                      : 'text-gray-700 bg-purple-50 border-purple-500'
+                  }`}>
+                    {selectedExploration.alasan}
+                  </div>
+                </div>
+
+                <div className={`border-t pt-4 ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+                  <h5 className={`font-semibold mb-3 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    <TrendingUp size={16} className="text-purple-500" />
+                    Potensi Dampak
+                  </h5>
+                  <div className="space-y-2">
+                    {selectedExploration.dampak.map((d: string, i: number) => (
+                      <div key={i} className={`flex items-start gap-2 p-2 rounded-lg text-sm ${
+                        darkMode ? 'bg-gray-700 text-gray-300' : 'bg-white border text-gray-700'
+                      }`}>
+                        <span className="font-bold text-purple-500">{i + 1}.</span>
+                        <span>{d}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 pt-0">
+                <button 
+                  onClick={() => setPdfData({
+                    inovasi_1: { judul: selectedExploration.judul1, opd: selectedExploration.opd1 },
+                    inovasi_2: { judul: selectedExploration.judul2, opd: selectedExploration.opd2 },
+                    skor_kecocokan: selectedExploration.score,
+                    kategori: getScoreLabel(selectedExploration.score / 100),
+                    hasil_ai: {
+                      manfaat: selectedExploration.manfaat,
+                      alasan: [selectedExploration.alasan],
+                      dampak: selectedExploration.dampak
+                    }
+                  })}
+                  className="w-full flex items-center justify-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
                 >
-                  <Send size={18} />
+                  <FileDown size={16} />
+                  Export PDF Hasil Eksplorasi
                 </button>
               </div>
-              <p className={`text-xs mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                💡 AI sebagai pendukung analisis, bukan pengambil keputusan
-              </p>
+            </section>
+          </div>
+          </div>
+        )}
+
+        {/* ============= SECTION 3: AI CHATBOT (Full Width at Bottom) ============= */}
+        <div className="rounded-3xl p-3 bg-white/40 dark:bg-gray-900/40">
+          <section className={`rounded-2xl shadow-xl overflow-hidden ${
+            darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+          }`}>
+          
+          {/* Header */}
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-5 flex-shrink-0">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="bg-white p-2 rounded-lg">
+                <Bot className="text-green-600" size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-xl">AI Assistant BRIDA</h3>
+                <p className="text-sm text-green-100">
+                  {isSendingMessage ? 'Mengetik...' : 'Online - Siap Membantu'}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-green-50 mt-2">
+              Tanyakan tentang inovasi daerah Jawa Timur
+            </p>
+          </div>
+
+          {/* Messages Area */}
+          <div 
+            className="overflow-y-auto p-6 space-y-4" 
+            style={{ 
+              minHeight: '400px',
+              maxHeight: '600px',
+            }}
+          >
+            {messages.length === 0 && (
+              <div className={`text-center py-12 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <Bot size={56} className="mx-auto mb-4 opacity-50" />
+                <p className="text-base mb-2 font-semibold">
+                  Selamat datang di AI Assistant BRIDA!
+                </p>
+                <p className="text-sm">
+                  Ketik pertanyaan Anda atau pilih contoh pertanyaan di bawah
+                </p>
+              </div>
+            )}
+            
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {message.type === 'typing' ? (
+                  <div className={`rounded-lg p-4 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                    <TypingIndicator />
+                  </div>
+                ) : message.type === 'error' ? (
+                  <div className="max-w-[85%] rounded-lg p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700">
+                    <div className="flex items-start gap-2 mb-3">
+                      <AlertCircle size={18} className="text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-red-800 dark:text-red-200 font-semibold mb-1">
+                          Terjadi Kesalahan
+                        </p>
+                        <p className="text-sm text-red-700 dark:text-red-300 break-words">
+                          {message.text}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleRetry}
+                      className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                    >
+                      <RefreshCw size={14} />
+                      Coba Lagi
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className={`max-w-[85%] rounded-lg p-4 ${
+                      message.type === 'user'
+                        ? 'bg-green-500 text-white'
+                        : darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {message.type === 'bot' && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <Bot size={16} className="text-green-500 flex-shrink-0" />
+                        <span className="text-sm font-semibold text-green-500">BRIDA AI</span>
+                      </div>
+                    )}
+                    
+                    {message.type === 'bot' ? (
+                      <div className="space-y-2">
+                        {formatBotMessage(message.text, darkMode)}
+                      </div>
+                    ) : (
+                      <p className="text-sm leading-relaxed whitespace-pre-line break-words">{message.text}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* ✅ UPDATED: Suggested Prompts Moved Above Input */}
+          <div className={`p-6 border-t flex-shrink-0 ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
+            
+            {/* Suggested Prompts - Now ABOVE the input */}
+            <div className="mb-2 pr-20">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                {suggestedPrompts.map((prompt, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSuggestedPromptClick(prompt)}
+                    disabled={isSendingMessage}
+                    className={`text-left px-3 py-2 rounded-lg text-xs transition-all ${
+                      darkMode 
+                        ? 'bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600 hover:border-green-500' 
+                        : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 hover:border-green-400 hover:shadow-sm'
+                    } ${isSendingMessage ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Input Area */}
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && !isSendingMessage && handleSend()}
+                placeholder="Tanyakan tentang inovasi..."
+                disabled={isSendingMessage}
+                className={`flex-1 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm ${
+                  darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-800'
+                } ${isSendingMessage ? 'opacity-50 cursor-not-allowed' : ''}`}
+              />
+              <button
+                onClick={() => handleSend()}
+                disabled={!input.trim() || isSendingMessage}
+                className={`px-6 py-3 rounded-lg transition-colors flex items-center justify-center ${
+                  input.trim() && !isSendingMessage
+                    ? 'bg-green-500 text-white hover:bg-green-600'
+                    : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                }`}
+              >
+                {isSendingMessage ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : (
+                  <Send size={20} />
+                )}
+              </button>
             </div>
           </div>
+        </section>
         </div>
       </div>
       
@@ -1046,6 +1212,16 @@ export function AIChatbot({ darkMode }: AIChatbotProps) {
           data={selectedPdfRecommendation}
         />
       )}
+    </div>
+  );
+}
+
+export default function App() {
+  const [darkMode, setDarkMode] = useState(false);
+
+  return (
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      <AIChatbot darkMode={darkMode} />
     </div>
   );
 }
